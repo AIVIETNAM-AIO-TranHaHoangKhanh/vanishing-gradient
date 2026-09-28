@@ -1,0 +1,39 @@
+# macOS / editor metadata
+.DS_Store
+.vscode/*.log
+
+# LaTeX intermediate files
+*.aux
+*.bbl
+*.bcf
+*.blg
+*.fdb_latexmk
+*.fls
+*.glg
+*.glo
+*.gls
+*.idx
+*.ilg
+*.ind
+*.ist
+*.lof
+*.log
+*.lot
+*.nav
+*.out
+*.run.xml
+*.snm
+*.synctex.gz
+*.toc
+*.vrb
+*.xdv
+_minted-*/
+svg-inkscape/
+
+# Generated output and scratch directories
+build/
+output/
+tmp/
+
+# PDF accidentally generated next to the main source by editor recipes
+vanishing-gradient/*.pdf
