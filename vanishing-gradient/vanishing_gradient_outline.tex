@@ -605,36 +605,145 @@ này gần như không được học trong suốt quá trình huấn luyện. V
 nắm bắt các biểu diễn phức tạp của dữ liệu, từ đó bị giới hạn về độ sâu và hiệu
 năng.
 
+
 \section{Kiến trúc nền tảng của mạng Neural Network}
 \textit{Người phụ trách: Trang, Trí}
-
+ 
+Mạng neural nhân tạo là một hàm tham số hóa $f_{\theta}:\mathbb{R}^{n}\to\mathbb{R}^{K}$ được xây dựng bằng cách xếp chồng nhiều phép biến đổi đơn giản. Mỗi phép biến đổi gồm một bước \emph{tuyến tính} và một bước \emph{phi tuyến}; chính sự kết hợp này cho phép mạng xấp xỉ những quan hệ rất phức tạp giữa đầu vào và đầu ra. Phần này trình bày các khối cơ bản, cách chúng được ghép lại và cách mạng học từ dữ liệu, làm nền tảng để giải thích hiện tượng vanishing gradient ở phần sau.
+ 
 \subsection{Neuron, trọng số và bias}
-Mô tả phép biến đổi tuyến tính $\mathbf{z}=\mathbf{W}\mathbf{x}+\mathbf{b}$ và vai trò của từng thành phần.
-
-\subsection{Các lớp của mạng neural}
-Trình bày lớp đầu vào, các lớp ẩn, lớp đầu ra và cách thông tin được truyền qua mạng.
-
-\subsection{Forward pass và hàm mất mát}
-Tóm tắt quá trình tạo dự đoán, tính loss và chuẩn bị cho bước lan truyền ngược.
-
-\subsection{Backpropagation và cập nhật tham số}
-Giới thiệu gradient, chain rule và quy tắc cập nhật theo gradient descent.
-
-\section{Dấu hiệu nhận biết Vanishing Gradient}
-\textit{Người phụ trách: Trang, Trí}
-
+Neuron là đơn vị tính toán nhỏ nhất của mạng. Với vector đầu vào $\mathbf{x}\in\mathbb{R}^{n}$, một lớp gồm $m$ neuron trước hết thực hiện phép biến đổi tuyến tính
+\begin{equation}
+    \mathbf{z}=\mathbf{W}\mathbf{x}+\mathbf{b},
+    \qquad \mathbf{W}\in\mathbb{R}^{m\times n},\quad \mathbf{b}\in\mathbb{R}^{m},
+    \label{eq:linear}
+\end{equation}
+rồi đi qua hàm kích hoạt phi tuyến $\sigma$ áp dụng theo từng phần tử để cho đầu ra $\mathbf{a}=\sigma(\mathbf{z})$. Với neuron thứ $j$, ta có $z_j=\sum_{i=1}^{n}W_{ji}x_i+b_j$, tức là tổng có trọng số của các đặc trưng đầu vào cộng thêm một hằng số.
+ 
 \begin{itemize}
-    \item Gradient ở các lớp gần đầu vào rất nhỏ hoặc gần bằng $0$.
-    \item Trọng số của các lớp đầu thay đổi rất ít qua nhiều epoch.
-    \item Loss giảm rất chậm, sớm tạo plateau hoặc mô hình không hội tụ như kỳ vọng.
-    \item Các activation rơi vào vùng bão hòa của sigmoid/tanh.
-    \item Lớp cuối học được trong khi các lớp đầu gần như không học.
-    \item Với RNN, mô hình ghi nhớ kém các phụ thuộc dài hạn.
+    \item \textbf{Trọng số $\mathbf{W}$} cho biết mức độ và chiều ảnh hưởng của từng đặc trưng lên neuron: trọng số dương khuếch đại, trọng số âm ức chế, trọng số gần $0$ khiến đặc trưng gần như bị bỏ qua. Đây là nhóm tham số chính được điều chỉnh trong quá trình huấn luyện.
+    \item \textbf{Bias $\mathbf{b}$} dịch chuyển ngưỡng kích hoạt của neuron, giúp mô hình biểu diễn được các hàm không đi qua gốc tọa độ. Về mặt hình học, $\mathbf{W}$ quyết định hướng của siêu phẳng phân chia, còn $\mathbf{b}$ quyết định vị trí của nó.
+    \item \textbf{Hàm kích hoạt $\sigma$} đưa tính phi tuyến vào mạng. Nếu bỏ $\sigma$, tích của nhiều ma trận vẫn là một ma trận, nên mạng sâu chỉ tương đương một phép biến đổi tuyến tính duy nhất.
 \end{itemize}
-
+ 
+Ba hàm kích hoạt thường gặp, cùng đạo hàm của chúng, được tóm tắt trong Bảng~\ref{tab:activation}. Cột cuối sẽ đặc biệt quan trọng ở Mục~\ref{sec:vanishing}.
+ 
+\begin{table}[htbp]
+    \centering
+    \caption{Các hàm kích hoạt phổ biến và độ lớn đạo hàm.}
+    \label{tab:activation}
+    \begin{tabular}{@{}llcc@{}}
+        \toprule
+        Hàm & Công thức & Miền giá trị & $\max\sigma'(z)$ \\
+        \midrule
+        Sigmoid & $\dfrac{1}{1+e^{-z}}$ & $(0,1)$ & $0{,}25$ \\[6pt]
+        Tanh & $\dfrac{e^{z}-e^{-z}}{e^{z}+e^{-z}}$ & $(-1,1)$ & $1$ \\[6pt]
+        ReLU & $\max(0,z)$ & $[0,\infty)$ & $1$ \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+ 
+\subsection{Các lớp của mạng neural}
+Mạng truyền thẳng (feedforward) được tổ chức thành ba loại lớp:
+\begin{itemize}
+    \item \textbf{Lớp đầu vào (input layer)} nhận dữ liệu thô $\mathbf{x}$ như điểm ảnh, đặc trưng dạng bảng hay embedding của từ. Lớp này không tính toán mà chỉ đưa dữ liệu vào mạng.
+    \item \textbf{Các lớp ẩn (hidden layers)} biến đổi dữ liệu qua nhiều bước liên tiếp. Thông thường, các lớp đầu học đặc trưng đơn giản (cạnh, tần suất từ), còn các lớp sau kết hợp chúng thành biểu diễn trừu tượng hơn (hình dạng, ngữ nghĩa).
+    \item \textbf{Lớp đầu ra (output layer)} tạo dự đoán $\hat{\mathbf{y}}$. Hàm kích hoạt của lớp này phụ thuộc bài toán: tuyến tính cho hồi quy, sigmoid cho phân loại nhị phân, softmax cho phân loại nhiều lớp.
+\end{itemize}
+ 
+Thông tin đi từ lớp này sang lớp kế tiếp. Với mạng gồm $L$ lớp (không tính lớp đầu vào) và quy ước $\mathbf{a}^{(0)}=\mathbf{x}$, ta có
+\begin{equation}
+    \mathbf{z}^{(l)}=\mathbf{W}^{(l)}\mathbf{a}^{(l-1)}+\mathbf{b}^{(l)},
+    \qquad
+    \mathbf{a}^{(l)}=\sigma^{(l)}\!\bigl(\mathbf{z}^{(l)}\bigr),
+    \qquad l=1,\dots,L.
+    \label{eq:layer}
+\end{equation}
+Tập tham số của toàn mạng là $\theta=\{\mathbf{W}^{(l)},\mathbf{b}^{(l)}\}_{l=1}^{L}$.
+ 
+\subsection{Forward pass và hàm mất mát}
+\textbf{Forward pass} là việc áp dụng công thức~\eqref{eq:layer} lần lượt từ lớp $1$ đến lớp $L$ để thu được dự đoán $\hat{\mathbf{y}}=\mathbf{a}^{(L)}$. Trong quá trình này, các giá trị trung gian $\mathbf{z}^{(l)}$ và $\mathbf{a}^{(l)}$ được lưu lại vì bước lan truyền ngược sẽ cần đến chúng.
+ 
+Sau đó, \textbf{hàm mất mát} (loss) đo độ lệch giữa dự đoán $\hat{\mathbf{y}}$ và nhãn thật $\mathbf{y}$. Hai lựa chọn phổ biến là
+\begin{align}
+    \mathcal{L}_{\mathrm{MSE}} &= \frac{1}{N}\sum_{i=1}^{N}\bigl\lVert \hat{\mathbf{y}}_i-\mathbf{y}_i\bigr\rVert_2^{2}
+    && \text{(hồi quy)}, \\
+    \mathcal{L}_{\mathrm{CE}} &= -\frac{1}{N}\sum_{i=1}^{N}\sum_{k=1}^{K} y_{ik}\log\hat{y}_{ik}
+    && \text{(phân loại)}.
+\end{align}
+Loss là một đại lượng vô hướng: nó cho biết mô hình đang sai bao nhiêu và là mục tiêu cần cực tiểu hóa. Đồng thời, nó là điểm xuất phát của lan truyền ngược.
+ 
+\subsection{Backpropagation và cập nhật tham số}
+Để giảm loss, ta cần biết mỗi tham số ảnh hưởng đến loss như thế nào, tức là \textbf{gradient} $\partial\mathcal{L}/\partial\mathbf{W}^{(l)}$ và $\partial\mathcal{L}/\partial\mathbf{b}^{(l)}$. \textbf{Backpropagation} tính đồng thời gradient của mọi lớp một cách hiệu quả nhờ \textbf{quy tắc chuỗi} (chain rule), đi ngược từ lớp đầu ra về lớp đầu vào và tái sử dụng kết quả trung gian.
+ 
+Đặt sai số cục bộ $\boldsymbol{\delta}^{(l)}=\partial\mathcal{L}/\partial\mathbf{z}^{(l)}$. Khi đó
+\begin{align}
+    \boldsymbol{\delta}^{(L)} &= \frac{\partial\mathcal{L}}{\partial\mathbf{a}^{(L)}}\odot\sigma'\!\bigl(\mathbf{z}^{(L)}\bigr), \label{eq:delta-out}\\
+    \boldsymbol{\delta}^{(l)} &= \Bigl(\mathbf{W}^{(l+1)}\Bigr)^{\!\top}\boldsymbol{\delta}^{(l+1)}\odot\sigma'\!\bigl(\mathbf{z}^{(l)}\bigr), \label{eq:delta-rec}\\
+    \frac{\partial\mathcal{L}}{\partial\mathbf{W}^{(l)}} &= \boldsymbol{\delta}^{(l)}\Bigl(\mathbf{a}^{(l-1)}\Bigr)^{\!\top},
+    \qquad
+    \frac{\partial\mathcal{L}}{\partial\mathbf{b}^{(l)}} = \boldsymbol{\delta}^{(l)}, \label{eq:grad}
+\end{align}
+với $\odot$ là tích Hadamard (nhân từng phần tử). Có gradient rồi, tham số được cập nhật theo \textbf{gradient descent} với tốc độ học $\eta>0$:
+\begin{equation}
+    \mathbf{W}^{(l)}\leftarrow\mathbf{W}^{(l)}-\eta\,\frac{\partial\mathcal{L}}{\partial\mathbf{W}^{(l)}},
+    \qquad
+    \mathbf{b}^{(l)}\leftarrow\mathbf{b}^{(l)}-\eta\,\frac{\partial\mathcal{L}}{\partial\mathbf{b}^{(l)}}.
+    \label{eq:gd}
+\end{equation}
+Toàn bộ một vòng huấn luyện gồm bốn bước lặp lại: \emph{forward} $\rightarrow$ \emph{tính loss} $\rightarrow$ \emph{backward} $\rightarrow$ \emph{cập nhật tham số}.
+ 
 \begin{notebox}
-Nên minh họa dấu hiệu bằng biểu đồ phân bố gradient theo từng lớp, gradient norm theo epoch và learning curve.
+Công thức đệ quy~\eqref{eq:delta-rec} cho thấy $\boldsymbol{\delta}^{(l)}$ được tạo ra bằng cách nhân liên tiếp các ma trận $(\mathbf{W}^{(k)})^{\top}$ và các đạo hàm $\sigma'$ qua từng lớp. Một chuỗi tích dài như vậy có thể co lại hoặc phình ra rất nhanh. Đây chính là gốc rễ của hiện tượng vanishing gradient được phân tích ở phần tiếp theo.
 \end{notebox}
+ 
+ 
+\section{Dấu hiệu nhận biết Vanishing Gradient}
+\label{sec:vanishing}
+\textit{Người phụ trách: Trang, Trí}
+ 
+\subsection{Cơ chế hình thành}
+Khai triển đệ quy~\eqref{eq:delta-rec} cho thấy sai số tại lớp $l$ là tích của nhiều thừa số:
+\begin{equation}
+    \boldsymbol{\delta}^{(l)}
+    =\Biggl[\prod_{k=l+1}^{L}\operatorname{diag}\!\bigl(\sigma'(\mathbf{z}^{(k-1)})\bigr)\bigl(\mathbf{W}^{(k)}\bigr)^{\!\top}\Biggr]\boldsymbol{\delta}^{(L)}.
+    \label{eq:product}
+\end{equation}
+Nếu chuẩn của mỗi thừa số nhỏ hơn $1$, gradient co lại gần như theo hàm mũ khi đi ngược về các lớp đầu. Ví dụ, với sigmoid ta có $\sigma'(z)\le 0{,}25$; chỉ riêng thành phần này, sau $10$ lớp gradient đã bị nhân với không quá $0{,}25^{10}\approx 10^{-6}$. Khi đó các lớp gần đầu vào nhận được tín hiệu học gần như bằng không, dù lớp cuối vẫn học bình thường. Hiện tượng này được gọi là \textbf{vanishing gradient}.
+ 
+\subsection{Các dấu hiệu quan sát được}
+Các dấu hiệu dưới đây có thể được kiểm tra trực tiếp trong quá trình huấn luyện; Bảng~\ref{tab:signs} tóm tắt cách phát hiện từng dấu hiệu.
+ 
+\begin{enumerate}
+    \item \textbf{Gradient ở các lớp gần đầu vào rất nhỏ hoặc gần bằng $0$.} Chuẩn gradient $\lVert\nabla_{\mathbf{W}^{(l)}}\mathcal{L}\rVert$ của lớp đầu nhỏ hơn lớp cuối nhiều bậc độ lớn (chẳng hạn $10^{-8}$ so với $10^{-2}$), và giảm đều theo chiều từ lớp cuối về lớp đầu.
+    \item \textbf{Trọng số của các lớp đầu thay đổi rất ít qua nhiều epoch.} Bước cập nhật $\eta\,\nabla\mathcal{L}$ gần như bằng $0$ nên các trọng số này gần như đứng yên so với giá trị khởi tạo.
+    \item \textbf{Loss giảm rất chậm, sớm tạo plateau hoặc mô hình không hội tụ như kỳ vọng.} Learning curve gần như phẳng dù vẫn còn nhiều epoch và không có dấu hiệu overfitting (loss huấn luyện cũng không giảm).
+    \item \textbf{Các activation rơi vào vùng bão hòa của sigmoid/tanh.} Khi $|z|$ lớn, đầu ra tiến sát $0$ hoặc $1$ (sigmoid), $\pm1$ (tanh), khiến $\sigma'(z)\approx 0$ và chặn dòng gradient đi qua. Histogram activation khi đó dồn về hai đầu mút.
+    \item \textbf{Lớp cuối học được trong khi các lớp đầu gần như không học.} Mô hình chỉ tinh chỉnh phần đầu ra trên những đặc trưng gần như ngẫu nhiên, nên độ chính xác bị chặn ở mức thấp.
+    \item \textbf{Với RNN, mô hình ghi nhớ kém các phụ thuộc dài hạn.} Gradient lan truyền qua nhiều bước thời gian bị co lại, nên mô hình chỉ nắm được ngữ cảnh gần và bỏ sót thông tin ở xa.
+\end{enumerate}
+ 
+\begin{table}[htbp]
+    \centering
+    \caption{Tóm tắt dấu hiệu vanishing gradient và cách kiểm tra.}
+    \label{tab:signs}
+    \renewcommand{\arraystretch}{1.25}
+    \begin{tabularx}{\textwidth}{@{}>{\raggedright\arraybackslash}p{0.30\textwidth} >{\raggedright\arraybackslash}X >{\raggedright\arraybackslash}X@{}}
+        \toprule
+        Dấu hiệu & Đại lượng cần theo dõi & Biểu hiện điển hình \\
+        \midrule
+        Gradient lớp đầu $\approx 0$ & Gradient norm theo từng lớp & Giảm theo cấp số nhân về phía lớp đầu \\
+        Trọng số lớp đầu ít đổi & $\lVert\mathbf{W}^{(l)}_t-\mathbf{W}^{(l)}_0\rVert$ theo epoch & Gần như phẳng \\
+        Loss giảm chậm, plateau & Learning curve (train loss) & Đường cong phẳng sớm \\
+        Activation bão hòa & Histogram của $\mathbf{a}^{(l)}$ & Dồn về $0/1$ hoặc $\pm1$ \\
+        Chỉ lớp cuối học & So sánh tốc độ thay đổi giữa các lớp & Lớp cuối thay đổi, lớp đầu đứng yên \\
+        RNN quên ngữ cảnh xa & Gradient theo bước thời gian & Suy giảm nhanh khi lùi xa \\
+        \bottomrule
+    \end{tabularx}
+\end{table}
+ 
+\subsection{Phân biệt với các nguyên nhân khác}
+Loss giảm chậm chưa chắc do vanishing gradient. Cần loại trừ các nguyên nhân thường gặp khác như tốc độ học $\eta$ quá nhỏ, lỗi cài đặt (quên gọi \texttt{zero\_grad}, sai nhãn), hay ``dead ReLU'' (neuron luôn xuất ra $0$). Kết luận chỉ đáng tin khi \emph{đồng thời} thấy gradient các lớp đầu nhỏ hơn hẳn các lớp cuối \emph{và} activation bão hòa (hoặc đạo hàm nhỏ) ở những lớp đó.
 
 \section{Cơ chế Vanishing Gradient trong Backpropagation}
 \textit{Người phụ trách: Khanh}
