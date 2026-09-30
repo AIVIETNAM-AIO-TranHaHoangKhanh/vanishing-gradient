@@ -688,22 +688,231 @@ Phân tích cách $f'(z)$ và phổ của ma trận trọng số cùng quyết �
 \end{itemize}
 
 \subsection{Sự suy giảm tín hiệu trong Forward Pass}
+\label{sec:long-forward}
 \textit{Người phụ trách: Long}
 
-\begin{itemize}
-    \item Activation co nhỏ hoặc mất phương sai khi đi qua nhiều lớp.
-    \item Tín hiệu đầu vào yếu dần làm biểu diễn ở lớp sâu kém phân biệt.
-    \item Liên hệ giữa ổn định forward signal và ổn định backward gradient.
-\end{itemize}
+Sự lan truyền gradient chịu ảnh hưởng trực tiếp của những trạng thái mà mạng tạo ra trong lượt truyền xuôi (\textit{forward pass}). Nếu các phép biến đổi liên tiếp làm suy yếu độ nhạy đối với đầu vào, tín hiệu sai số truyền ngược cũng có thể bị co nhỏ. Tuy nhiên, ta cần phân biệt ba đại lượng: độ lớn của activation, mức độ khác biệt giữa các biểu diễn và độ lớn của gradient. Activation nhỏ không tự nó là một điều kiện đủ để kết luận rằng đã có vanishing gradient; ngược lại, activation vẫn có thể khác không trong khi độ nhạy và gradient đã suy giảm nghiêm trọng.
+\subsubsection{Mô hình truyền tín hiệu và độ nhạy cục bộ}
+Xét mạng truyền thẳng gồm $L$ lớp, với
+\begin{equation}
+ \mathbf h^{(0)}=\mathbf x,\qquad
+ \mathbf z^{(\ell)}=\mathbf W^{(\ell)}\mathbf h^{(\ell-1)}+\mathbf b^{(\ell)},\qquad
+ \mathbf h^{(\ell)}=\phi\!\left(\mathbf z^{(\ell)}\right).
+ \label{eq:long-ff}
+\end{equation}
+Ở đây, $\mathbf h^{(\ell)}\in\mathbb R^{n_\ell}$ là vector activation, $\mathbf z^{(\ell)}$ là vector tiền kích hoạt, và $\phi$ được áp dụng theo từng phần tử. Trong hai mục này, gradient được biểu diễn bằng vector cột; $\|\cdot\|_2$ là chuẩn Euclid đối với vector và chuẩn phổ đối với ma trận. Jacobian của lớp $\ell$ là
+\begin{equation}
+ \mathbf J_\ell
+ =\frac{\partial\mathbf h^{(\ell)}}{\partial\mathbf h^{(\ell-1)}}
+ =\mathbf D_\ell\mathbf W^{(\ell)},\qquad
+ \mathbf D_\ell=\operatorname{diag}\!\left(\phi'(\mathbf z^{(\ell)})\right).
+ \label{eq:long-jacobian}
+\end{equation}
+Với nhiễu đầu vào đủ nhỏ $\Delta\mathbf h^{(k)}$, đặt
+$\mathbf P_{L:k}=\mathbf J_L\mathbf J_{L-1}\cdots\mathbf J_{k+1}$. Khi các đạo hàm tồn tại, khai triển bậc nhất và quy tắc chuỗi sẽ cho ta
+\begin{equation}
+ \Delta\mathbf h^{(L)}\approx\mathbf P_{L:k}\Delta\mathbf h^{(k)},\qquad
+ \mathbf g^{(k)}=\mathbf P_{L:k}^{\mathsf T}\mathbf g^{(L)},\qquad
+ \mathbf g^{(\ell)}=\nabla_{\mathbf h^{(\ell)}}\mathcal L.
+ \label{eq:long-duality}
+\end{equation}
+Như vậy, lan truyền xuôi một nhiễu nhỏ và lan truyền ngược một gradient sẽ sử dụng cùng một tích Jacobian, và sẽ khác nhau bởi phép chuyển vị. Nếu $\|\mathbf P_{L:k}\|_2$ nhỏ thì cả độ nhạy đầu ra đối với nhiễu ở lớp $k$ lẫn gradient truyền về lớp đó đều bị chặn bởi một hệ số nhỏ. Trong trường hợp tích Jacobian có các giá trị kỳ dị rất khác nhau, chỉ một số hướng có thể bị co mạnh; do đó, không thể suy ra hành vi của mọi hướng chỉ từ một thống kê trung bình.
+
+\subsubsection{Suy giảm độ lớn và sự bão hòa của activation}
+Một cơ chế suy giảm dễ quan sát là sự co nhỏ của tín hiệu qua nhiều lớp. Trong mô hình tuyến tính đơn giản $\mathbf b^{(\ell)}=\mathbf0$ và $\phi(z)=z$, giả sử các trọng số độc lập, có trung bình bằng không, phương sai $v_\ell$, và độc lập với đầu vào của lớp. Khi các thành phần đầu vào có cùng một moment bậc hai là $q_{\ell-1}$, ta sẽ có
+\begin{equation}
+ q_\ell=\mathbb E\!\left[(h_i^{(\ell)})^2\right]
+ =n_{\ell-1}v_\ell q_{\ell-1}.
+ \label{eq:long-linear-variance}
+\end{equation}
+Kỳ vọng ở đây xét trên khởi tạo ngẫu nhiên và phân phối đầu vào nếu đầu vào cũng được xem là ngẫu nhiên. Khi activation có trung bình bằng không, $q_\ell$ đồng thời là phương sai. Nếu $n_{\ell-1}v_\ell=\alpha<1$ ở mọi lớp thì $q_\ell=\alpha^\ell q_0$: độ lớn bình phương trung bình của tín hiệu sẽ giảm theo cấp số nhân. Đây là mô hình lý tưởng hóa cho lập luận bảo toàn phương sai trong lúc khởi tạo; các giả thiết tuyến tính và độc lập sẽ không còn đúng hoàn toàn trong mạng phi tuyến sau khi huấn luyện~\cite[\S4.2]{long-glorot2010}.
+
+Một cơ chế khác xuất hiện khi tiền kích hoạt đi vào vùng bão hòa. Với $\phi(z)=\tanh(z)$, nếu $|z|$ lớn thì $|\phi(z)|\approx1$ nhưng $\phi'(z)=1-\tanh^2(z)\approx0$. Khi đó, activation không nhỏ, song một thay đổi nhỏ của đầu vào gần như không làm thay đổi đầu ra neuron. Sự bão hòa làm các phần tử tương ứng của $\mathbf D_\ell$ nhỏ đi, góp phần co Jacobian trong~\eqref{eq:long-jacobian}. Ngược lại, trong lân cận $z=0$, $\tanh(z)\approx z$ và $\tanh'(z)\approx1$, tức activation nhỏ tại đây không đồng nghĩa với việc đạo hàm nhỏ. Các quan sát này cho thấy rằng ta cần phải đánh giá phân bố preactivation và đạo hàm, thay vì chỉ đơn thuần nhìn vào độ lớn của activation~\cite[\S3]{long-glorot2010}.
+
+Ngoài gradient trạng thái, tín hiệu lan truyền xuôi còn tác động trực tiếp đến gradient trọng số. Đặt $\boldsymbol\delta^{(\ell)}=\nabla_{\mathbf z^{(\ell)}}\mathcal L$. Đối với một mẫu dữ liệu, ta sẽ có
+\begin{equation}
+ \nabla_{\mathbf W^{(\ell)}}\mathcal L
+ =\boldsymbol\delta^{(\ell)}\big(\mathbf h^{(\ell-1)}\big)^{\mathsf T},\qquad
+ \left\|\nabla_{\mathbf W^{(\ell)}}\mathcal L\right\|_F
+ =\|\boldsymbol\delta^{(\ell)}\|_2\,\|\mathbf h^{(\ell-1)}\|_2.
+ \label{eq:long-weight-gradient}
+\end{equation}
+Do đó, nếu một thừa số suy giảm trong khi thừa số còn lại bị chặn, gradient trọng số cũng sẽ nhỏ đi. Tuy nhiên, hai thừa số còn có thể biến đổi ngược chiều và bù trừ nhau về độ lớn; đối với một batch nhỏ, gradient còn là tổng hoặc là trung bình của nhiều tích ngoài. Chính vì thế, gradient trọng số không thể được dùng để thay thế hoàn toàn cho gradient trạng thái khi ta chẩn đoán về sự lan truyền tín hiệu~\cite[\S4.2--4.3]{long-glorot2010}.
+
+\subsubsection{Mất khả năng phân biệt đầu vào dù phương sai còn được duy trì}
+Sự bảo toàn về độ lớn của từng biểu diễn vẫn là chưa đủ để bảo toàn sự khác biệt giữa các đầu vào với nhau. Để mô tả hiện tượng này, Schoenholz và cộng sự đã xét một họ mạng truyền thẳng rộng, chưa được huấn luyện, có trọng số và bias được khởi tạo một cách độc lập theo
+\begin{equation}
+ W_{ij}^{(\ell)}\sim\mathcal N\!\left(0,\frac{\sigma_w^2}{n_{\ell-1}}\right),\qquad
+ b_i^{(\ell)}\sim\mathcal N(0,\sigma_b^2).
+ \label{eq:long-mf-init}
+\end{equation}
+Trong xấp xỉ trường trung bình (\textit{mean-field approximation}), tiền kích hoạt tại một lớp được thay bằng biến Gaussian có cùng hai moment đầu. Với một đầu vào cố định, đặt $q_\ell=\mathbb E[(z_i^{(\ell)})^2]$; kỳ vọng lúc này lấy trên họ mạng khởi tạo ngẫu nhiên, không phải phương sai của một neuron trên tập dữ liệu. Khi tiền kích hoạt có trung bình bằng không, $q_\ell$ chính là phương sai và thỏa mãn gần đúng
+\begin{equation}
+ q_\ell\approx\sigma_w^2\int\mathcal Dz\,
+ \phi\!\left(\sqrt{q_{\ell-1}}z\right)^2+\sigma_b^2,
+ \qquad \mathcal Dz=\frac{e^{-z^2/2}}{\sqrt{2\pi}}\,dz.
+ \label{eq:long-mf-q}
+\end{equation}
+Đây là cách viết lại quan hệ truyền phương sai của~\cite[\S2]{long-schoenholz2017} theo ký hiệu của báo cáo.
+
+Xét hai đầu vào $\mathbf x_a,\mathbf x_b$ đi qua \emph{cùng một mạng}. Đặt
+\begin{equation}
+ q_\ell^{ab}=\mathbb E\!\left[z_i^{(\ell)}(\mathbf x_a)z_i^{(\ell)}(\mathbf x_b)\right],\qquad
+ c_\ell=\frac{q_\ell^{ab}}{\sqrt{q_\ell^{aa}q_\ell^{bb}}}.
+ \label{eq:long-corr}
+\end{equation}
+Giả sử phương sai của cả hai tín hiệu đã tiến gần cùng một điểm bất động $q_*>0$. Khi đó,
+\begin{equation}
+ \mathbb E\!\left[\big(z_i^{(\ell)}(\mathbf x_a)-z_i^{(\ell)}(\mathbf x_b)\big)^2\right]
+ \approx2q_*(1-c_\ell).
+ \label{eq:long-distance}
+\end{equation}
+Nếu $c_\ell\to1$, khoảng cách bình phương trung bình trên mỗi tọa độ của preactivation sẽ tiến về không, dù phương sai của từng tín hiệu vẫn xấp xỉ $q_*$. Với activation là Lipschitz như $\tanh$, khoảng cách giữa các activation cũng sẽ bị chặn theo khoảng cách của preactivation. Các biểu diễn cũng vì thế mà trở nên khó phân biệt hơn theo nghĩa khoảng cách này. Đây là sự suy giảm tín hiệu phân biệt đầu vào, không phải phát biểu rằng mọi activation đều tiến về không, cũng không phải một phép đo trực tiếp lượng thông tin Shannon.
+
+\subsubsection{Liên hệ định lượng với sự suy giảm gradient}
+Gần điểm bất động tương quan $c=1$, trong chế độ phương sai đã ổn định, tuyến tính hóa ánh xạ tương quan cho
+\begin{equation}
+ 1-c_\ell\approx\chi(1-c_{\ell-1}),\qquad
+ \chi=\sigma_w^2\int\mathcal Dz\,
+ \left[\phi'\!\left(\sqrt{q_*}z\right)\right]^2.
+ \label{eq:long-chi}
+\end{equation}
+Nếu $0<\chi<1$, sai khác giữa hai tín hiệu gần nhau giảm theo cấp số nhân quanh điểm bất động này. Độ sâu đặc trưng tương ứng là $\xi=-1/\log\chi$, bởi $\chi^d=e^{-d/\xi}$~\cite[\S2--3]{long-schoenholz2017}.
+
+Đáng chú ý, cùng hệ số $\chi$ xuất hiện trong phân tích lan truyền ngược của tác giả. Với các lớp có cùng chiều rộng, đặt $\widetilde q_\ell=\mathbb E[(\delta_i^{(\ell)})^2]$. Dưới các xấp xỉ của mô hình,
+\begin{equation}
+ \widetilde q_\ell\approx\chi\widetilde q_{\ell+1},\qquad
+ \widetilde q_\ell\approx\chi^{L-\ell}\widetilde q_L.
+ \label{eq:long-mf-backward}
+\end{equation}
+Cụ thể, phân tích backward trong~\cite[\S4]{long-schoenholz2017} sử dụng thêm xấp xỉ độc lập giữa trọng số dùng trong forward và backward để khép kín quan hệ moment. Đây là công cụ phân tích, không phải quy trình backpropagation thực tế sử dụng hai bộ trọng số khác nhau. Khi các lớp có chiều rộng khác nhau, quan hệ truyền moment còn có hệ số tỷ lệ chiều rộng; khi mạng đã học, tương quan giữa trọng số và trạng thái cũng có thể làm xấp xỉ kém chính xác.
+
+Trong phạm vi trên, $\chi<1$ gắn với sự suy giảm moment bậc hai của gradient, $\chi>1$ gắn với sự tăng trưởng, còn $\chi\approx1$ làm giảm biến dạng thang đo trung bình qua nhiều lớp. Tuy nhiên, ổn định một moment không bảo đảm mọi hướng gradient đều được bảo toàn, cũng không bảo đảm sẽ tối ưu hóa thành công. Kết quả này chủ yếu giải thích tại sao cấu hình khởi tạo ban đầu lại có thể đồng thời ảnh hưởng tới khả năng truyền tín hiệu xuôi và gradient ngược.
+
+Từ góc độ đánh giá thực nghiệm, ta cần theo dõi đồng thời độ lớn hoặc moment bậc hai của activation, tỷ lệ neuron bão hòa, độ khác biệt giữa các biểu diễn và gradient trạng thái theo lớp, điều này giúp bổ sung một góc nhìn khác về \emph{hệ quả của phép biến đổi lên tín hiệu}; cách lựa chọn khởi tạo và độ sâu sẽ được trình bày ở các mục tương ứng của báo cáo.
 
 \subsection{Vanishing Gradient trong RNN}
+\label{sec:long-rnn}
 \textit{Người phụ trách: Long}
 
-\begin{itemize}
-    \item Backpropagation Through Time tạo tích lặp của recurrent weight và đạo hàm activation.
-    \item Gradient từ thời điểm xa suy giảm trước khi quay về các bước đầu chuỗi.
-    \item Hệ quả là khó học phụ thuộc dài hạn và dễ quên thông tin cũ.
-\end{itemize}
+Trong mạng nơ-ron hồi tiếp (\textit{recurrent neural network}, RNN), trạng thái ẩn được cập nhật nhiều lần bằng một hàm chuyển trạng thái dùng chung tham số. Vì vậy, ngay cả một RNN chỉ có một lớp hồi tiếp cũng tạo ra đồ thị tính toán sâu khi xử lý chuỗi dài. Vấn đề vanishing gradient xuất hiện theo \emph{khoảng cách thời gian}, làm suy yếu tín hiệu học liên quan đến những sự kiện ở xa thời điểm tính mất mát. Phân tích dưới đây dựa trên Pascanu và cộng sự~\cite[\S1.1--2.1]{long-pascanu2013} và Goodfellow và cộng sự~\cite[\S8.2.5, \S10.7]{long-goodfellow2016}.
+
+\subsubsection{RNN và phép trải mạng theo thời gian}
+Xét một RNN cơ bản có trạng thái ẩn kích thước $m$:
+\begin{equation}
+ \mathbf a_t=\mathbf W_h\mathbf h_{t-1}+\mathbf W_x\mathbf x_t+\mathbf b,
+ \qquad \mathbf h_t=\phi(\mathbf a_t),\qquad
+ \mathcal L=\sum_{t=1}^{T}\ell_t(\mathbf h_t).
+ \label{eq:long-rnn-model}
+\end{equation}
+Hàm $\ell_t$ bao gồm phép đọc đầu ra và so sánh với nhãn tại thời điểm $t$. Trong phân tích này, trạng thái ban đầu $\mathbf h_0$ được giả sử cố định; các tham số hồi tiếp là $\boldsymbol\theta=\{\mathbf W_h,\mathbf W_x,\mathbf b\}$. Lan truyền ngược theo thời gian (\textit{backpropagation through time}, BPTT) thực hiện backpropagation trên đồ thị được trải thành $T$ bước. Các nút trạng thái thuộc những thời điểm khác nhau, nhưng sử dụng cùng một bộ tham số.
+
+Jacobian của một bước chuyển là
+\begin{equation}
+ \mathbf A_t=\frac{\partial\mathbf h_t}{\partial\mathbf h_{t-1}}
+ =\mathbf D_t\mathbf W_h,\qquad
+ \mathbf D_t=\operatorname{diag}\!\left(\phi'(\mathbf a_t)\right).
+ \label{eq:long-rnn-jac}
+\end{equation}
+Do $\mathbf a_t$ phụ thuộc vào đầu vào và trạng thái trước đó, các $\mathbf D_t$ thường khác nhau theo thời gian. Vì vậy, với RNN phi tuyến, tích Jacobian nói chung không thể thay bằng một lũy thừa của riêng $\mathbf W_h$.
+
+\subsubsection{Tín hiệu sai số phải đi qua một tích Jacobian dài}
+Với $t>k$, đặt
+\begin{equation}
+ \mathbf P_{t:k}=\frac{\partial\mathbf h_t}{\partial\mathbf h_k}
+ =\mathbf A_t\mathbf A_{t-1}\cdots\mathbf A_{k+1},\qquad
+ \mathbf P_{t:t}=\mathbf I.
+ \label{eq:long-rnn-product}
+\end{equation}
+Nếu chỉ xét mất mát $\ell_t$ tại thời điểm $t$, đóng góp gradient của nó tại trạng thái $\mathbf h_k$ là
+\begin{equation}
+ \mathbf g_k^{(t)}
+ :=\nabla_{\mathbf h_k}\ell_t
+ =\mathbf P_{t:k}^{\mathsf T}\mathbf r_t,
+ \qquad \mathbf r_t=\nabla_{\mathbf h_t}\ell_t.
+ \label{eq:long-rnn-credit}
+\end{equation}
+Gradient từ sự kiện tại $t$ phải đi qua $t-k$ phép biến đổi để tác động đến trạng thái tại $k$. Với mất mát tại nhiều thời điểm, gradient tổng tại trạng thái thỏa mãn
+\begin{equation}
+ \mathbf g_k=\mathbf r_k+\mathbf A_{k+1}^{\mathsf T}\mathbf g_{k+1}
+ =\sum_{t=k}^{T}\mathbf P_{t:k}^{\mathsf T}\mathbf r_t.
+ \label{eq:long-rnn-total-state}
+\end{equation}
+Quan hệ này phân biệt tín hiệu sai số cục bộ với tín hiệu truyền từ các thời điểm xa. Một gradient tổng khác không chưa chứng minh rằng mạng vẫn nhận được đóng góp đáng kể từ các phụ thuộc dài hạn.
+
+\subsubsection{Điều kiện đủ cho sự suy giảm theo cấp số nhân}
+Giả sử tồn tại $\rho\in(0,1)$ sao cho $\|\mathbf A_s\|_2\leq\rho$ tại mọi bước trên đoạn đang xét. Tính dưới nhân của chuẩn phổ cho
+\begin{equation}
+ \|\mathbf g_k^{(t)}\|_2
+ \leq\left(\prod_{s=k+1}^{t}\|\mathbf A_s\|_2\right)\|\mathbf r_t\|_2
+ \leq\rho^{t-k}\|\mathbf r_t\|_2.
+ \label{eq:long-rnn-bound}
+\end{equation}
+Khi gradient tại đầu cuối được giữ cố định hoặc bị chặn, ảnh hưởng truyền ngược suy giảm theo cấp số nhân của độ trễ. Nếu $|\phi'(u)|\leq\gamma$ với mọi $u$, thì
+\begin{equation}
+ \|\mathbf A_s\|_2\leq\gamma\|\mathbf W_h\|_2.
+ \label{eq:long-rnn-sufficient}
+\end{equation}
+Do đó, $\gamma\|\mathbf W_h\|_2<1$ là một điều kiện đủ cho sự co đồng đều này. Với $\tanh$, có thể chọn $\gamma=1$; với sigmoid logistic, $\gamma=1/4$. Đối với $\tanh$, ngay cả khi $\|\mathbf W_h\|_2\geq1$, các trạng thái bão hòa vẫn có thể làm tích Jacobian co mạnh. Ngược lại, việc một số chuẩn Jacobian lớn hơn $1$ không đủ để kết luận gradient thực tế sẽ bùng nổ: kết quả còn phụ thuộc hướng của gradient và toàn bộ tích ma trận~\cite[\S2.1]{long-pascanu2013}.
+
+Trường hợp tuyến tính giúp minh họa vai trò của phép lặp. Nếu $\phi(u)=u$, ta có $\mathbf P_{t:k}=\mathbf W_h^{t-k}$. Khi $\mathbf W_h$ chéo hóa được,
+\begin{equation}
+ \mathbf W_h=\mathbf V\boldsymbol\Lambda\mathbf V^{-1}
+ \quad\Longrightarrow\quad
+ \mathbf W_h^{t-k}=\mathbf V\boldsymbol\Lambda^{t-k}\mathbf V^{-1}.
+ \label{eq:long-rnn-eigen}
+\end{equation}
+Các thành phần ứng với $|\lambda_i|<1$ suy giảm khi độ trễ tăng. Tổng quát hơn, bán kính phổ $r(\mathbf W_h)<1$ bảo đảm $\mathbf W_h^d\to\mathbf0$ khi $d\to\infty$, kể cả khi không chéo hóa được. Tuy nhiên, một ma trận không chuẩn tắc vẫn có thể gây khuếch đại tạm thời trước khi suy giảm tiệm cận. Với RNN phi tuyến, cần quay lại tích $\mathbf A_t\cdots\mathbf A_{k+1}$; chỉ xét eigenvalue của ma trận trọng số là chưa đủ.
+
+\subsubsection{Gradient tham số dùng chung và bài toán gán trách nhiệm}
+Để hiểu tác động lên việc học, viết $\boldsymbol\theta$ thành vector các tham số hồi tiếp và đặt
+\begin{equation}
+ \mathbf B_k=\left.\frac{\partial\mathbf h_k}{\partial\boldsymbol\theta}
+ \right|_{\mathbf h_{k-1}\ \text{cố định}}.
+ \label{eq:long-rnn-local}
+\end{equation}
+$\mathbf B_k$ chỉ ghi nhận tác động trực tiếp của tham số tại bước $k$. Vì các tham số được dùng lại ở mọi thời điểm, quy tắc chuỗi cho
+\begin{equation}
+ \nabla_{\boldsymbol\theta}\mathcal L
+ =\sum_{t=1}^{T}\sum_{k=1}^{t}
+ \mathbf B_k^{\mathsf T}\mathbf P_{t:k}^{\mathsf T}\mathbf r_t.
+ \label{eq:long-rnn-param}
+\end{equation}
+Đây là dạng tổng các đóng góp theo thời gian trong phân tích của Pascanu và cộng sự~\cite[\S1.1]{long-pascanu2013}. Mỗi số hạng biểu diễn tác động của việc sử dụng tham số tại bước $k$ đến mất mát ở bước $t$. Nếu $\|\mathbf B_k\|_2\leq M$ và điều kiện của~\eqref{eq:long-rnn-bound} được thỏa mãn thì
+\begin{equation}
+ \left\|\mathbf B_k^{\mathsf T}\mathbf P_{t:k}^{\mathsf T}\mathbf r_t\right\|_2
+ \leq M\rho^{t-k}\|\mathbf r_t\|_2.
+ \label{eq:long-rnn-term}
+\end{equation}
+Các đóng góp có độ trễ lớn vì thế có thể trở nên rất mờ nhạt trong khi các đóng góp gần thời điểm đầu ra vẫn đáng kể. Điều này giải thích vì sao mạng vẫn có thể giảm loss và học các quan hệ ngắn hạn, nhưng lại khó gán trách nhiệm cho những sự kiện ở thời điểm xa hơn. Vanishing gradient trong RNN không nhất thiết có nghĩa là toàn bộ $\nabla_{\boldsymbol\theta}\mathcal L$ gần bằng không.
+
+Về mặt lan truyền xuôi, nếu hai chuỗi có lịch sử khác nhau tại bước $k$ nhưng lại cùng các đầu vào từ $k+1$ đến $t$, thì trong xấp xỉ cục bộ,
+ta vẫn có $\Delta\mathbf h_t\approx\mathbf P_{t:k}\Delta\mathbf h_k$.
+Do đó, cùng tích Jacobian có thể làm giảm cả khác biệt do lịch sử để lại và tín hiệu sai số quay về lịch sử đó. Tuy vậy, năng lực biểu diễn hoặc lưu giữ thông tin và khả năng học cách sử dụng thông tin bằng gradient là hai vấn đề khác nhau; không nên đồng nhất vanishing gradient với một khẳng định tuyệt đối rằng RNN không thể ghi nhớ xa~\cite[\S10.7]{long-goodfellow2016}.
+
+\subsubsection{Ví dụ định lượng và hệ quả khi đánh giá mô hình}
+Xét RNN một chiều $h_s=\tanh(wh_{s-1}+ux_s+b)$. Đạo hàm qua $d$ bước là
+\begin{equation}
+ \frac{\partial h_t}{\partial h_{t-d}}
+ =\prod_{s=t-d+1}^{t}w(1-h_s^2).
+ \label{eq:long-rnn-scalar}
+\end{equation}
+Chọn $w=0.9$, $b=0$, trạng thái ban đầu bằng không và đầu vào bằng không trên đoạn xét. Khi đó $h_s=0$ ở mọi bước, nên đạo hàm trên bằng chính xác $0.9^d$. Bảng~\ref{tab:long-decay} cho thấy sự suy giảm ngay cả khi $\tanh$ hoạt động tại vùng có đạo hàm lớn nhất.
+\begin{table}[htbp]
+ \centering
+ \caption{Hệ số truyền độ nhạy theo độ trễ trong RNN một chiều. Các giá trị được tính trực tiếp từ $0.9^d$, không phải kết quả huấn luyện.}
+ \label{tab:long-decay}
+ \begin{tabular}{@{}rrrrr@{}}
+ \toprule
+ Độ trễ $d$ & $10$ & $20$ & $50$ & $100$ \\
+ \midrule
+ $0.9^d$ & $0.3487$ & $0.1216$ & $5.154\times10^{-3}$ & $2.656\times10^{-5}$ \\
+ \bottomrule
+ \end{tabular}
+\end{table}
+Nếu các trạng thái đi vào vùng bão hòa, những hệ số $1-h_s^2$ nhỏ còn làm độ nhạy suy giảm nhanh hơn. Ví dụ này minh họa sự suy giảm gradient trạng thái; nó không chứng minh mọi gradient tham số đều khác không hoặc đều suy giảm cùng tốc độ.
+
+Để quan sát đúng cơ chế trong thí nghiệm, có thể đặt mất mát tại bước cuối và đo $\|\nabla_{\mathbf h_k}\ell_T\|_2$ theo độ trễ $T-k$, đồng thời đánh giá hiệu năng trên một tác vụ cần thông tin từ đầu chuỗi. Nếu đồ thị tính toán bị cắt tại biên của \textit{truncated BPTT}, đóng góp vượt ngoài cửa sổ bị loại bỏ do cách tính, cần phân biệt với gradient suy giảm qua một đồ thị còn nguyên. Tương tự, gradient clipping giới hạn gradient quá lớn nhưng không khôi phục những đóng góp dài hạn đã mất~\cite[\S10.11.1]{long-goodfellow2016}. Các kiến trúc có đường truyền trạng thái được điều tiết bằng cổng, như LSTM và GRU, sẽ được bàn trong mục giải pháp; ở đây, kết luận cốt lõi là chiều dài chuỗi làm tăng số Jacobian phải nhân và có thể khiến tín hiệu gán trách nhiệm dài hạn suy yếu nghiêm trọng.
 
 \subsection{Ảnh hưởng của kiến trúc mạng}
 \textit{Người phụ trách: Tâm}
