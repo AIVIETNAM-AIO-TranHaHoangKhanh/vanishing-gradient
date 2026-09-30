@@ -779,22 +779,57 @@ Phân tích cách $f'(z)$ và phổ của ma trận trọng số cùng quyết �
 \end{itemize}
 
 \subsection{Khởi tạo và độ lớn của weight}
-\textit{Người phụ trách: Khoa}
 
+Các thuật toán tối ưu hóa dùng để huấn luyện mô hình học sâu thường mang tính lặp lại thay vì dựa trên một công thức cố định để đưa ra kết quả. Vì vậy ta cần phải đưa ra một điểm khởi tạo ban đầu để bắt đầu vòng lặp. Hơn nữa, do việc huấn luyện các mô hình học sâu có độ phức tạp cao nên hầu hết các thuật toán đều bị ảnh hưởng lớn bởi lựa chọn điểm khởi tạo.
+
+Điểm khởi tạo ban đầu có thể quyết định khả năng hội tụ của thuật toán. Một số điểm khởi tạo không ổn định có thể dẫn đến các sự cố về mặt tính toán số học và làm cho thuật toán thất bại hoàn toàn. Ngay cả khi quá trình học có thể hội tụ, điểm khởi tạo vẫn có thể quyết định tốc độ hội tụ nhanh hay chậm, cũng như việc nó sẽ hội tụ về một điểm có loss cao hay thấp. 
+
+Mục 4.1 đã chỉ ra rằng gradient tại một lớp ở phía đầu mạng là tích của các ma trận Jacobian cục bộ:
+\[ \frac{\partial \mathcal{L}}{\partial \mathbf{h}^{(l)}} = \left( \prod_{k=l+1}^{L} \frac{\partial h^{(k)}}{\partial \mathbf{h}^{(k-1)}} \right) \frac{\partial \mathcal{L}}{\partial \mathbf{h}^{(L)}}, \qquad \frac{\partial \mathbf{h}^{(k)}}{\partial \mathbf{h}^{(k-1)}} = \operatorname{diag}\big( f'(z^{(k)}) \big) W^{(k)}. \]
+Trước khi huấn luyện, các ma trận trọng số $W^{(k)}$ được khởi tạo ngẫu nhiên, do đó độ lớn ban đầu của trọng số quyết định trực tiếp kích thước của từng thừa số trong tích này. Nó cũng quyết định $z^{(k)}$ vì $z^{(k)}$ được tính bằng cách truyền đầu vào qua tất cả các lớp ngẫu nhiên trước đó, và vì vậy nó cũng quyết định $f'(z^{(k)})$ sẽ lớn hay tiến gần về 0.
+
+Schoenholz và cộng sự (2017) cho thấy rằng trên trung bình, mỗi lớp nhân kích thước bình phương trung bình (mean squared size) của tín hiệu lan truyền ngược (backward signal) với một số hệ số khuếch đại phụ thuộc vào phương sai của trọng số và hàm kích hoạt:
+
+\[  \chi \;=\; n \operatorname{Var}(W)\; \mathbb{E}\big[ f'(z)^2 \big], \]
+trong đó $n$ là chiều rộng của lớp. Qua $L - l$ lớp, kích thước bình phương trung bình của gradient được nhân lên khoảng $\chi^{L - l}$, tức là độ lớn của nó được nhân lên khoảng $\chi^{(L - l)/2}$ lần. Hiện tượng xảy ra dựa vào giá trị của $\chi$:
 \begin{itemize}
-    \item Trọng số quá nhỏ làm cả tín hiệu và gradient co lại qua từng lớp.
-    \item Trọng số quá lớn có thể đẩy activation vào vùng bão hòa.
-    \item Liên hệ với Xavier/Glorot initialization và He initialization.
+    \item Nếu $\chi < 1$, gradient sẽ bị biến mất (gradient vanishing). Nếu chuỗi mạng đủ sâu (tức $L - l$ lớn), giá trị $\chi^{L-l}$ sẽ tiến rất nhanh về 0. Điều này làm cho gradient tại các lớp đầu tiên ($\frac{\partial \mathcal{L}}{\partial \mathbf{h}^{(l)}}$) cực kỳ nhỏ, khiến các trọng số ở các lớp này gần như không được cập nhật trong quá trình huấn luyện.
+    \item Nếu $\chi = 1$, gradient được bảo toàn ổn định qua các lớp
+    \item Nếu $\chi > 1$, gradient bùng nổ và tiến tới vô cùng (gradient exploding).
 \end{itemize}
+Việc khởi tạo sẽ chọn $\operatorname{Var}(W)$, và do đó sẽ quyết định giá trị của $\chi$.
+
+Khi trọng số quá nhỏ, ta sẽ có $\chi < 1$ vì mỗi lớp sẽ làm thu nhỏ cả tín hiệu lan truyền tiến (forward signal) lẫn gradient lan truyền ngược. Ví dụ, với chiều rộng lớp $n = 100$ và trọng số được lấy từ phân phối $\mathcal{N}(0, 0.01^2)$, ta có $n \operatorname{Var}(W) = 10^{-2}$, do đó độ lớn của tín hiệu và gradient bị chia cho 10 ở mỗi lớp, và sau 20 lớp, nó bị nhân với $10^{-20}$. Các lớp ở sâu khi đó sẽ nhận được giá trị kích hoạt rất nhỏ gần như giống hệt nhau với mọi đầu vào (xem Mục 5.4), và các lớp ở phía trước sẽ gần như không nhận được gradient nào.
+
+Ngược lại, trọng số quá lớn sẽ làm cho $|z^{(k)}|$ tăng lên và đẩy các đơn vị vào vùng bão hòa của hàm sigmoid và tanh, nơi $f'(z)$ gần bằng 0 (Mục 5.1). Một đơn vị bị bão hòa hầu như không truyền được gradient. Glorot và Bengio (2010) đã quan sát thấy hiện tượng bão hòa này ở các lớp ẩn của mạng sigmoid và tanh sâu. 
+
+Tuy nhiên, hiện tượng bão hòa không phải là toàn bộ vấn đề. Các trọng số lớn cũng khuếch đại tín hiệu. Poole (2016) và Schoenholz (2017) cho thấy rằng khi phương sai của trọng số vượt qua một giá trị tới hạn (critical value), gradient trung bình sẽ tăng theo độ sâu thay vì thu nhỏ lại. Vì vậy, trọng số quá lớn không chỉ gây bão hòa các unit làm mất gradient, mà còn làm mất ổn định hệ thống và có thể khiến gradient bùng nổ.
+
+Hai quy tắc khởi tạo tiêu chuẩn của Xavier và He chọn $\operatorname{Var}(W)$ sao cho $\chi$ xấp xỉ $1$. Chúng sẽ được thảo luận chi tiết trong Mục 7.2.
+
+Chúng ta cần lưu ý rằng việc khởi tạo chỉ đảm bảo một điểm bắt đầu tốt. Các phân tích kể trên đều dựa trên giả định rằng các lớp có chiều rộng lớn, các trọng số độc lập với nhau, và nó chỉ mô tả hành vi trung bình tại bước huấn luyện đầu tiên. Đối với các mạng có chiều rộng hữu hạn, Hanin (2018) đã chỉ ra rằng độ biến thiên của gradient giữa các lần khởi tạo ngẫu nhiên sẽ tăng theo tổng các nghịch đảo chiều rộng của các lớp; do đó, một mạng sâu và hẹp vẫn có thể gặp phải hiện tượng triệt tiêu hoặc bùng nổ gradient (Mục 5.3). Chuẩn hóa theo lô (Batch normalization) và các kết nối tắt (residual connections) giúp quá trình huấn luyện ít bị nhạy cảm hơn đối với quy mô khởi tạo ban đầu. Hai phương pháp này sẽ được trình bày ở Mục 7.2 và 7.3.
 
 \subsection{Độ sâu của mạng}
-\textit{Người phụ trách: Khoa}
 
-\begin{itemize}
-    \item Số lượng thừa số trong chain rule tăng theo độ sâu.
-    \item Gradient suy giảm theo cấp số nhân nếu các thừa số có chuẩn nhỏ hơn $1$.
-    \item Các lớp gần đầu vào chịu ảnh hưởng nghiêm trọng nhất.
-\end{itemize}
+Mục 4.1 đã viết gradient tại lớp $l$ dưới dạng:
+\[ 
+\frac{\partial \mathcal{L}}{\partial \mathbf{h}^{(l)}}
+= \left( \prod_{k=l+1}^{L} \frac{\partial \mathbf{h}^{(k)}}{\partial \mathbf{h}^{(k-1)}} \right) \frac{\partial \mathcal{L}}{\partial \mathbf{h}^{(L)}}.
+\]
+Tích này có $L - l$ nhân tử, vì vậy nó trở nên dài hơn khi mạng càng sâu, và nó dài nhất đối với các lớp nằm gằn đầu vào nhất.  Lớp 1 được truyền $L - 1$ ma trận Jacobian, trong khi lớp cuối không phải truyền qua ma trận Jacobian nào. Vì vậy, việc thêm một lớp trong mạng sẽ thêm một nhân tử vào gradient của \textit{mọi} lớp ở phía trước.
+
+Nếu kích thước của mỗi nhân tử đều nhỏ hơn 1, tích này sẽ suy giảm theo cấp số nhân. Nếu $\big\| \partial \mathbf{h}^{(k)} / \partial \mathbf{h}^{(k-1)} \big\| \le \gamma < 1$ với mọi lớp, thì
+
+\[
+\left\| \frac{\partial \mathcal{L}}{\partial \mathbf{h}^{(l)}} \right\| \;\le\; \gamma^{\,L-l}\, \left\| \frac{\partial \mathcal{L}}{\partial \mathbf{h}^{(L)}} \right\| .
+\]
+Độ sâu chính là số mũ trong chặn trên này. Một hệ số $\gamma = 0.9$ trên mỗi lớp là vô hại đối với một mạng nông (ví dụ: $0.9^{10} \approx 0.35$), nhưng nó lại rất nghiêm trọng với một mạng sâu (ví dụ: $0.9^{100} = 3 \times 10^5$). Lập luận tương tự theo chiều ngược lại sẽ giải thích hiện tượng bùng nổ gradient (ví dụ: $1.1^{10} \approx 2.6$ và $1.1^{100} \approx 1.4 \times 10^4$). Ví dụ về hàm sigmoid ở Mục 4.4, nơi mỗi nhân tử tối đa là 0.25, là trường hợp cực đoan của chặn trên này. 
+
+Mục 5.2 đã chỉ ra rằng, trên trung bình, mỗi lớp sẽ scale gradient theo một số hệ số khuếch đại $\chi = n \operatorname{Var}(W) \mathbb{E}[f'(z)^2]$, do đó
+\[
+\left\| \frac{\partial \mathcal{L}}{\partial \mathbf{h}^{(l)}} \right\| \;\sim\; \chi^{(L-l)/2}.
+\]
+Hệ số khuếch đại $\chi$ không phụ thuộc vào độ sâu; độ sâu chỉ quyết định hệ số này được áp dụng bao nhiêu lần. Chính vì thế, một hệ số khuếch đại chỉ nhỏ hơn 1 một chút là vô hại trong một mạng nông nhưng lại gây hại trong một mạng sâu. Schoenholz và cộng sự (2017) đã cho thấy rằng các mạng sâu chỉ có thể huấn luyện được khi việc khởi tạo ở rất gần điểm tới hạn $\chi = 1$, và khởi tạo càng gần điểm này thì mạng càng có thể xây dựng sâu hơn.
 
 \subsection{Sự suy giảm tín hiệu trong Forward Pass}
 \label{sec:long-forward}
