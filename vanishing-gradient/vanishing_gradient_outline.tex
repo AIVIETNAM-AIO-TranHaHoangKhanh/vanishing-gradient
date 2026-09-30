@@ -605,6 +605,16 @@ này gần như không được học trong suốt quá trình huấn luyện. V
 nắm bắt các biểu diễn phức tạp của dữ liệu, từ đó bị giới hạn về độ sâu và hiệu
 năng.
 
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.80\linewidth]{assets/water_relay_vanishing_gradient.jpg}
+    \caption[Vanishing gradient qua trò chơi truyền nước]{Ta có thể tưởng tượng vanishing gradient giống như trò chơi truyền nước mà ta thường chơi ngày bé.
+Khi hàng người truyền nước càng dài, hay khoảng cách giữa các người chơi xa,
+hoặc người chơi dùng tay để hứng nước thì lượng nước đến được tới thau đựng
+nước sẽ ngày càng ít hoặc có thể là không có gì.}
+    \label{fig:water-relay-vanishing-gradient}
+    {\footnotesize Nguồn ảnh: Fiedler (2024)~\cite{fiedler2024}.\par}
+\end{figure}
 
 \section{Kiến trúc nền tảng của mạng Neural Network}
 \textit{Người phụ trách: Trang, Trí}
@@ -869,9 +879,9 @@ Một cơ chế suy giảm dễ quan sát là sự co nhỏ của tín hiệu qu
  =n_{\ell-1}v_\ell q_{\ell-1}.
  \label{eq:long-linear-variance}
 \end{equation}
-Kỳ vọng ở đây xét trên khởi tạo ngẫu nhiên và phân phối đầu vào nếu đầu vào cũng được xem là ngẫu nhiên. Khi activation có trung bình bằng không, $q_\ell$ đồng thời là phương sai. Nếu $n_{\ell-1}v_\ell=\alpha<1$ ở mọi lớp thì $q_\ell=\alpha^\ell q_0$: độ lớn bình phương trung bình của tín hiệu sẽ giảm theo cấp số nhân. Đây là mô hình lý tưởng hóa cho lập luận bảo toàn phương sai trong lúc khởi tạo; các giả thiết tuyến tính và độc lập sẽ không còn đúng hoàn toàn trong mạng phi tuyến sau khi huấn luyện~\cite[\S4.2]{long-glorot2010}.
+Kỳ vọng ở đây xét trên khởi tạo ngẫu nhiên và phân phối đầu vào nếu đầu vào cũng được xem là ngẫu nhiên. Khi activation có trung bình bằng không, $q_\ell$ đồng thời là phương sai. Nếu $n_{\ell-1}v_\ell=\alpha<1$ ở mọi lớp thì $q_\ell=\alpha^\ell q_0$: độ lớn bình phương trung bình của tín hiệu sẽ giảm theo cấp số nhân. Đây là mô hình lý tưởng hóa cho lập luận bảo toàn phương sai trong lúc khởi tạo; các giả thiết tuyến tính và độc lập sẽ không còn đúng hoàn toàn trong mạng phi tuyến sau khi huấn luyện~\cite[\S4.2]{glorot2010}.
 
-Một cơ chế khác xuất hiện khi tiền kích hoạt đi vào vùng bão hòa. Với $\phi(z)=\tanh(z)$, nếu $|z|$ lớn thì $|\phi(z)|\approx1$ nhưng $\phi'(z)=1-\tanh^2(z)\approx0$. Khi đó, activation không nhỏ, song một thay đổi nhỏ của đầu vào gần như không làm thay đổi đầu ra neuron. Sự bão hòa làm các phần tử tương ứng của $\mathbf D_\ell$ nhỏ đi, góp phần co Jacobian trong~\eqref{eq:long-jacobian}. Ngược lại, trong lân cận $z=0$, $\tanh(z)\approx z$ và $\tanh'(z)\approx1$, tức activation nhỏ tại đây không đồng nghĩa với việc đạo hàm nhỏ. Các quan sát này cho thấy rằng ta cần phải đánh giá phân bố preactivation và đạo hàm, thay vì chỉ đơn thuần nhìn vào độ lớn của activation~\cite[\S3]{long-glorot2010}.
+Một cơ chế khác xuất hiện khi tiền kích hoạt đi vào vùng bão hòa. Với $\phi(z)=\tanh(z)$, nếu $|z|$ lớn thì $|\phi(z)|\approx1$ nhưng $\phi'(z)=1-\tanh^2(z)\approx0$. Khi đó, activation không nhỏ, song một thay đổi nhỏ của đầu vào gần như không làm thay đổi đầu ra neuron. Sự bão hòa làm các phần tử tương ứng của $\mathbf D_\ell$ nhỏ đi, góp phần co Jacobian trong~\eqref{eq:long-jacobian}. Ngược lại, trong lân cận $z=0$, $\tanh(z)\approx z$ và $\tanh'(z)\approx1$, tức activation nhỏ tại đây không đồng nghĩa với việc đạo hàm nhỏ. Các quan sát này cho thấy rằng ta cần phải đánh giá phân bố preactivation và đạo hàm, thay vì chỉ đơn thuần nhìn vào độ lớn của activation~\cite[\S3]{glorot2010}.
 
 Ngoài gradient trạng thái, tín hiệu lan truyền xuôi còn tác động trực tiếp đến gradient trọng số. Đặt $\boldsymbol\delta^{(\ell)}=\nabla_{\mathbf z^{(\ell)}}\mathcal L$. Đối với một mẫu dữ liệu, ta sẽ có
 \begin{equation}
@@ -881,7 +891,7 @@ Ngoài gradient trạng thái, tín hiệu lan truyền xuôi còn tác động 
  =\|\boldsymbol\delta^{(\ell)}\|_2\,\|\mathbf h^{(\ell-1)}\|_2.
  \label{eq:long-weight-gradient}
 \end{equation}
-Do đó, nếu một thừa số suy giảm trong khi thừa số còn lại bị chặn, gradient trọng số cũng sẽ nhỏ đi. Tuy nhiên, hai thừa số còn có thể biến đổi ngược chiều và bù trừ nhau về độ lớn; đối với một batch nhỏ, gradient còn là tổng hoặc là trung bình của nhiều tích ngoài. Chính vì thế, gradient trọng số không thể được dùng để thay thế hoàn toàn cho gradient trạng thái khi ta chẩn đoán về sự lan truyền tín hiệu~\cite[\S4.2--4.3]{long-glorot2010}.
+Do đó, nếu một thừa số suy giảm trong khi thừa số còn lại bị chặn, gradient trọng số cũng sẽ nhỏ đi. Tuy nhiên, hai thừa số còn có thể biến đổi ngược chiều và bù trừ nhau về độ lớn; đối với một batch nhỏ, gradient còn là tổng hoặc là trung bình của nhiều tích ngoài. Chính vì thế, gradient trọng số không thể được dùng để thay thế hoàn toàn cho gradient trạng thái khi ta chẩn đoán về sự lan truyền tín hiệu~\cite[\S4.2--4.3]{glorot2010}.
 
 \subsubsection{Mất khả năng phân biệt đầu vào dù phương sai còn được duy trì}
 Sự bảo toàn về độ lớn của từng biểu diễn vẫn là chưa đủ để bảo toàn sự khác biệt giữa các đầu vào với nhau. Để mô tả hiện tượng này, Schoenholz và cộng sự đã xét một họ mạng truyền thẳng rộng, chưa được huấn luyện, có trọng số và bias được khởi tạo một cách độc lập theo
@@ -1059,16 +1069,313 @@ Nếu các trạng thái đi vào vùng bão hòa, những hệ số $1-h_s^2$ n
 Để quan sát đúng cơ chế trong thí nghiệm, có thể đặt mất mát tại bước cuối và đo $\|\nabla_{\mathbf h_k}\ell_T\|_2$ theo độ trễ $T-k$, đồng thời đánh giá hiệu năng trên một tác vụ cần thông tin từ đầu chuỗi. Nếu đồ thị tính toán bị cắt tại biên của \textit{truncated BPTT}, đóng góp vượt ngoài cửa sổ bị loại bỏ do cách tính, cần phân biệt với gradient suy giảm qua một đồ thị còn nguyên. Tương tự, gradient clipping giới hạn gradient quá lớn nhưng không khôi phục những đóng góp dài hạn đã mất~\cite[\S10.11.1]{long-goodfellow2016}. Các kiến trúc có đường truyền trạng thái được điều tiết bằng cổng, như LSTM và GRU, sẽ được bàn trong mục giải pháp; ở đây, kết luận cốt lõi là chiều dài chuỗi làm tăng số Jacobian phải nhân và có thể khiến tín hiệu gán trách nhiệm dài hạn suy yếu nghiêm trọng.
 
 \subsection{Ảnh hưởng của kiến trúc mạng}
-\textit{Người phụ trách: Tâm}
 
-\begin{itemize}
-    \item Mạng tuần tự thuần túy buộc gradient đi qua toàn bộ chuỗi phép biến đổi.
-    \item Thiếu skip/residual connection làm đường truyền gradient dài hơn.
-    \item Bottleneck quá hẹp hoặc cấu trúc không chuẩn hóa có thể làm tín hiệu suy yếu.
-\end{itemize}
+Kiến trúc mạng quyết định cách tín hiệu được truyền đi và những đường mà
+gradient có thể đi qua. Đối với mạng tuần tự, đầu ra của mỗi lớp chỉ được
+truyền trực tiếp tới lớp kế tiếp. Do đó, gradient từ hàm mất mát muốn lan
+truyền ngược về các lớp gần đầu vào phải đi qua toàn bộ các phép biến đổi nằm
+giữa hai lớp. Theo chain rule, đường truyền này chứa tích của nhiều ma trận
+Jacobian. Khi nhiều Jacobian trong tích có chuẩn nhỏ hơn $1$, gradient sẽ suy
+giảm nhanh trước khi đến được các lớp đầu tiên. Vì vậy, ngoài hàm activation
+và cách khởi tạo trọng số như đã trình bày ở trên, độ sâu, độ rộng và cách kết
+nối giữa các lớp cũng ảnh hưởng trực tiếp đến khả năng tối ưu của mô hình.
 
+
+\subsubsection{Tương quan giữa độ sâu và độ rộng}
+
+Theo paper của Hanin (2018)~\cite{hanin2018}  mạng fully connection sử dụng activatoin ReLU.
+Trọng số giữa các lớp được giả sử là độc lập, đối xứng quanh 0 và có phương sai tỉ lệ phù hợp với
+ReLU. Trong phạm vi mô hình này, tác giả đã chỉ ra rằng ảnh hưởng kết hợp của độ sâu và độ rộng tác động
+đến sự phân tán của gradient được đạc trưng bởi đại lượng $\beta$.
+\[
+    \beta=\sum_{j=1}^{d-1}\frac{1}{n_j},
+\]
+
+\begin{infobox}{Ý nghĩa của đại lượng $\beta$}
+\small
+\begin{description}[
+    style=multiline,
+    leftmargin=3.3em,
+    labelwidth=2.5em,
+    labelsep=0.8em,
+    itemsep=3pt,
+    topsep=2pt
+]
+    \item[$\beta$] Là một hằng số phụ thuộc vào kiến trúc, dùng để tóm tắt ảnh hưởng
+    của sự kết hợp về độ sâu và độ rộng lên mức độ phân tán của các phần tử trong ma trận
+    Jacobian ở thời điểm khởi tạo.
+    \item[$d$] số hidden layer của mô hình.
+
+    \item[$j$] Chỉ số của lớp ẩn.
+
+    \item[$n_j$] Số neuron, hay độ rộng, của lớp ẩn thứ $j$.
+
+    \item[$1/n_j$] Mức đóng góp của lớp thứ $j$ vào $\beta$. Lớp càng hẹp
+    thì $1/n_j$ càng lớn; lớp càng rộng thì đóng góp này càng nhỏ.
+\end{description}
+
+Trong phạm vi mạng fully connected dùng ReLU được paper phân tích,
+$\beta$ nhỏ tương ứng với các phần tử Jacobian ổn định hơn về độ phân tán;
+$\beta$ lớn cho thấy nguy cơ xuất hiện đồng thời nhiều đạo hàm rất nhỏ và rất
+lớn tại thời điểm khởi tạo.
+\end{infobox}
+
+Để nghiên cứu quá trình truyền gradient, paper xét phần tử của Jacobian đầu
+vào--đầu ra
+\[
+    Z_{p,q}=\frac{\partial f_q(\mathbf{x})}{\partial x_p},
+\]
+
+\begin{infobox}{Ý nghĩa các ký hiệu trong $Z_{p,q}$}
+\small
+\begin{description}[
+    style=multiline,
+    leftmargin=3.8em,
+    labelwidth=3em,
+    labelsep=0.8em,
+    itemsep=3pt,
+    topsep=2pt
+]
+    \item[$\mathbf{x}$] Vector đầu vào của mạng.
+
+    \item[$x_p$] Phần tử thứ $p$ của vector đầu vào.
+
+    \item[$f_q(\mathbf{x})$] Đầu ra thứ $q$ mà mạng tính được từ
+    $\mathbf{x}$.
+
+    \item[$p,q$] Chỉ số dùng để chọn một tọa độ đầu vào và một tọa độ đầu ra.
+
+    \item[$Z_{p,q}$] Một phần tử của Jacobian đầu vào--đầu ra, đo độ nhạy của
+    đầu ra thứ $q$ khi đầu vào thứ $p$ thay đổi một lượng rất nhỏ. Nếu
+    $|Z_{p,q}|$ gần $0$, ảnh hưởng theo cặp đầu vào--đầu ra này gần như biến
+    mất; nếu nó quá lớn, ảnh hưởng bị khuếch đại mạnh.
+\end{description}
+\end{infobox}
+
+Với cách định tỉ lệ phương sai nói trên, moment bậc hai của phần tử Jacobian
+được giữ ổn định:
+\[
+    \mathbb{E}\!\left[Z_{p,q}^{2}\right]=\frac{1}{n_0},
+\]
+
+Trong biểu thức này, $\mathbb{E}[\,\cdot\,]$ là kỳ vọng qua các lần khởi tạo
+ngẫu nhiên, còn $n_0$ là số chiều của vector đầu vào. Phương trình cho biết
+bình phương độ nhạy được giữ ổn định về trung bình; nó không khẳng định mọi
+$Z_{p,q}$ đều có độ lớn gần nhau. Hanin chứng minh
+rằng moment bậc cao và độ phân tán của bình phương các phần tử Jacobian tăng
+theo dạng hàm mũ của $\beta$. Khi $\beta$ lớn, trong cùng một mạng có thể tồn
+tại đồng thời các đạo hàm rất nhỏ và các đạo hàm rất lớn, khiến một learning
+rate chung khó phù hợp với tất cả tham số.
+
+Nếu mọi lớp ẩn có cùng độ rộng $n$, đại lượng trên trở thành
+\[
+    \beta=\frac{d-1}{n}.
+\]
+Công thức này cho thấy độ sâu không nên được xem xét độc lập với độ rộng. Nếu
+giữ nguyên $n$ nhưng tiếp tục tăng số lớp, $\beta$ tăng và gradient tại thời
+điểm khởi tạo có xu hướng phân tán mạnh hơn. Ngược lại, tăng độ rộng tương ứng
+với độ sâu giúp hạn chế sự tích lũy của các hiệu ứng hữu hạn chiều rộng.
+
+Trong thực nghiệm, xu hướng tăng độ rộng theo chiều sâu thường xuất hiện rõ ở
+các mạng CNN. Mạng thường được chia thành nhiều
+\textit{stage}; mỗi khi kích thước không gian của feature map giảm, số kênh
+được tăng lên, phổ biến theo dãy $64\rightarrow128\rightarrow256\rightarrow512$.
+Chẳng hạn, ResNet tăng gấp đôi số kênh tại các điểm chuyển stage
+\cite{he2016identity}. Cách thiết kế này trước hết giúp các lớp sâu có đủ khả
+năng biểu diễn và giữ chi phí tính toán tương đối cân bằng khi chiều cao và
+chiều rộng của feature map giảm. Nếu liên hệ với trực giác từ $\beta$, việc
+không để các lớp ẩn trở nên quá hẹp cũng làm giảm đóng góp $1/n_j$ của từng
+lớp. Tuy nhiên, quy tắc ``gấp đôi số kênh'' là một kinh nghiệm thiết kế CNN,
+không phải hệ quả trực tiếp từ công thức $\beta$ nhưng nó cũng phần chứng mình
+được quá trình thực nghiệm cũng chỉ ra được xu hướng cũng như là điểm nghẽn này.
+
+Ở gần đầu ra, độ rộng thường giảm mạnh thông qua global average pooling hoặc
+một lớp tuyến tính ánh xạ đặc trưng sang số lớp cần dự đoán. Điều này không mâu
+thuẫn với phân tích trên, vì đây chủ yếu là bước đọc kết quả cuối cùng chứ không
+phải một chuỗi dài các lớp ẩn hẹp. Hơn nữa, số chiều đầu ra không xuất hiện
+trong tổng $\beta=\sum_{j=1}^{d-1}1/n_j$. Trường hợp đáng lưu ý hơn là một
+bottleneck rất hẹp nằm giữa đường truyền sâu, vì nó trực tiếp làm tăng $\beta$
+và có thể trở thành điểm nghẽn đối với sự lan truyền gradient.
+
+\subsubsection{Ảnh hưởng của lớp bottleneck}
+
+Do mỗi lớp đóng góp một lượng $1/n_j$ vào $\beta$, một lớp quá hẹp có thể chi
+phối đáng kể đại lượng này. Chẳng hạn, xét hai mạng có hai lớp ẩn và cùng tổng
+số neuron ẩn:
+\[
+    \beta_{(50,50)}
+    =\frac{1}{50}+\frac{1}{50}=0.04,
+    \qquad
+    \beta_{(10,90)}
+    =\frac{1}{10}+\frac{1}{90}\approx0.111.
+\]
+Mặc dù cả hai kiến trúc đều có tổng cộng $100$ neuron ẩn, kiến trúc thứ hai có
+$\beta$ lớn hơn do chứa một lớp hẹp. Với độ sâu và tổng số neuron ẩn cố định,
+phân bố độ rộng tương đối đồng đều giữa các lớp sẽ làm giảm $\beta$. Tuy nhiên,
+kết quả này không có nghĩa rằng mọi bottleneck đều gây vanishing gradient; nó
+chỉ mô tả sự phân tán của các phần tử Jacobian trong mạng fully connected dùng
+ReLU tại thời điểm khởi tạo, dưới các giả thiết của paper.
+
+\subsubsection{Ảnh hưởng của cách kết nối giữa các lớp}
+
+Độ sâu và độ rộng chưa mô tả đầy đủ kiến trúc mạng. Trong plain network,
+gradient chỉ có đường đi tuần tự qua các lớp trung gian. Ngược lại, skip
+connection tạo thêm đường truyền ngắn hơn, cho phép tín hiệu và gradient bỏ qua
+một hoặc nhiều phép biến đổi. Đối với residual block có dạng
+\[
+    \mathbf{h}^{(l+1)}
+    =\mathbf{h}^{(l)}
+    +\mathcal{F}\!\left(\mathbf{h}^{(l)},\mathbf{W}^{(l)}\right),
+\]
+Jacobian của block theo đầu vào là
+\[
+    \frac{\partial\mathbf{h}^{(l+1)}}{\partial\mathbf{h}^{(l)}}
+    =\mathbf{I}
+    +\frac{\partial\mathcal{F}}{\partial\mathbf{h}^{(l)}}.
+\]
+Thành phần đồng nhất $\mathbf{I}$ tạo một đường truyền trực tiếp, nhờ đó
+gradient không hoàn toàn phụ thuộc vào tích các đạo hàm trên nhánh biến đổi
+$\mathcal{F}$. Kết quả phân tích của He và cộng sự
+(2016)~\cite{he2016identity} cũng cho thấy đường truyền đồng nhất đóng vai trò
+quan trọng đối với quá trình lan truyền xuôi và lan truyền ngược. Dù vậy, hiệu
+quả còn phụ thuộc vào các phép toán đặt trên nhánh
+tắt; một shortcut có phép co giãn, cổng điều khiển hoặc phép chiếu vẫn có thể
+cản trở sự truyền tín hiệu. Cơ chế và cách sử dụng residual/skip connection sẽ
+được trình bày chi tiết hơn trong phần giải pháp.
+
+\begin{notebox}
+Kiến trúc ảnh hưởng đến gradient thông qua độ dài đường truyền, tương quan
+giữa độ sâu và độ rộng, và cách các lớp được kết nối. Trong mạng fully
+connected dùng ReLU tại khởi tạo, $\beta=\sum_j 1/n_j$ cung cấp một đại lượng
+định lượng cho ảnh hưởng kết hợp của độ sâu và độ rộng; với residual network,
+identity shortcut còn tạo thêm một thành phần truyền gradient trực tiếp.
+\end{notebox}
+
+\clearpage
 \section{Ví dụ minh họa cho các trường hợp Vanishing Gradient}
 \textit{Người phụ trách chung: Khanh, Tâm, Long, Khoa}
+
+\subsection{Khung mô hình mô-đun cho thí nghiệm ablation}
+
+Để phân tích riêng tác động của từng thành phần, có thể xây dựng một backbone
+theo dạng mô-đun như Hình~\ref{fig:modular-vanishing-ablation}. Sáu nhóm biến
+được đánh số từ 1 đến 6 có thể thay đổi độc lập, gồm độ sâu, độ rộng hoặc
+bottleneck, activation, phương pháp khởi tạo trọng số, normalization và
+residual connection. Các vị trí mang cùng số trong backbone cho biết thành
+phần nào của mô hình chịu ảnh hưởng bởi biến tương ứng.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\linewidth]{assets/modular_vanishing_gradient_ablation.pdf}
+    \caption{Mô hình mô-đun dùng để tách riêng ảnh hưởng của các thành phần đến
+    vanishing gradient. Các hộp màu cam là biến được can thiệp; đường màu xanh
+    dương là đường truyền tín hiệu; các đầu dò màu xanh lá ghi nhận gradient
+    tại nhiều độ sâu. Sơ đồ được thiết kế bằng Draw.io.}
+    \label{fig:modular-vanishing-ablation}
+\end{figure}
+
+Mỗi thí nghiệm bắt đầu từ cùng một cấu hình baseline và chỉ thay đổi một hộp
+màu cam, trong khi giữ cố định dữ liệu, optimizer, learning rate, batch size,
+số epoch và tập seed. Tại mỗi lớp, cần ghi lại gradient norm, histogram
+gradient hoặc Jacobian, đồng thời theo dõi loss và accuracy. So sánh các đường
+cong này giữa baseline và cấu hình đã thay đổi sẽ giúp quy tác động quan sát
+được cho đúng thành phần, thay vì thay nhiều yếu tố cùng lúc rồi không xác định
+được nguyên nhân.
+
+\subsubsection{Bộ dữ liệu CIFAR-10}
+
+Các thí nghiệm trong phần này sử dụng CIFAR-10, bộ dữ liệu phân loại ảnh được
+giới thiệu trong báo cáo của Krizhevsky (2009)~\cite{krizhevsky2009}. CIFAR-10
+gồm $60\,000$ ảnh màu RGB kích thước $32\times32$, được chia đều vào 10 lớp:
+\textit{airplane}, \textit{automobile}, \textit{bird}, \textit{cat},
+\textit{deer}, \textit{dog}, \textit{frog}, \textit{horse}, \textit{ship} và
+\textit{truck}. Mỗi lớp có $6\,000$ ảnh. Phân chia chính thức gồm $50\,000$ ảnh
+huấn luyện và $10\,000$ ảnh kiểm tra.
+
+Trong báo cáo này, $5\,000$ ảnh được tách có phân tầng từ tập huấn luyện chính
+thức để làm tập validation, tức mỗi lớp đóng góp $500$ ảnh. Vì vậy, dữ liệu
+được sử dụng theo tỉ lệ $45\,000/5\,000/10\,000$ cho train, validation và test;
+tập test chỉ được dùng khi đánh giá mô hình cuối cùng. Ảnh đầu vào được chuyển
+sang số thực, chuẩn hóa riêng trên từng kênh RGB bằng mean và standard deviation
+tính từ tập train. Random crop với padding 4 và random horizontal flip chỉ được
+áp dụng cho tập train. Kích thước ảnh nhỏ và số lượng mẫu vừa phải giúp có thể
+lặp lại nhiều cấu hình độ sâu, độ rộng và skip connection với cùng một quy
+trình huấn luyện.
+
+\subsubsection{Cấu hình mô hình baseline}
+
+Baseline được chọn làm điểm tham chiếu ổn định cho Hình~\ref{fig:modular-vanishing-ablation}.
+Đầu tiên, một convolution $3\times3$ ánh xạ ảnh RGB sang $64$ kênh. Backbone
+gồm $L=8$ block có cùng độ rộng $n_l=64$. Trong mỗi block, nhánh residual thực
+hiện lần lượt convolution $3\times3$, Batch Normalization và ReLU, sau đó cộng
+với identity shortcut. Cuối mạng, global average pooling tạo một vector $64$
+chiều và lớp tuyến tính ánh xạ vector này sang 10 logit. Cấu hình đầy đủ được
+khai báo trong Bảng~\ref{tab:cifar10-baseline}.
+
+\begin{table}[H]
+    \centering
+    \caption{Cấu hình baseline cho thí nghiệm trên CIFAR-10.}
+    \label{tab:cifar10-baseline}
+    \small
+    \renewcommand{\arraystretch}{1.18}
+    \begin{tabularx}{\linewidth}{
+        >{\raggedright\arraybackslash\bfseries}p{0.23\linewidth}
+        >{\raggedright\arraybackslash}X}
+        \toprule
+        Thành phần & Giá trị baseline \\
+        \midrule
+        Dữ liệu
+            & CIFAR-10; $45\,000$ train, $5\,000$ validation và $10\,000$ test. \\
+        Đầu vào
+            & Tensor $3\times32\times32$; chuẩn hóa theo từng kênh RGB. \\
+        Data augmentation
+            & Random crop $32\times32$ với padding 4 và random horizontal flip
+              cho tập train. \\
+        Stem
+            & Convolution $3\times3$, stride 1, padding 1, từ 3 sang 64 kênh. \\
+        Độ sâu và độ rộng
+            & $L=8$ block; mọi block có $n_l=64$ kênh; không có bottleneck. \\
+        Residual block
+            & $\operatorname{Conv}_{3\times3}\rightarrow\operatorname{BatchNorm}
+              \rightarrow\operatorname{ReLU}\rightarrow+$ identity shortcut. \\
+        Khởi tạo
+            & He normal cho convolution và lớp tuyến tính; bias bằng 0. \\
+        Đầu ra và loss
+            & Global average pooling, Linear $64\rightarrow10$ và cross-entropy loss. \\
+        Optimizer
+            & SGD, learning rate $0.1$, momentum $0.9$, weight decay $5\times10^{-4}$. \\
+        Lịch huấn luyện
+            & 100 epoch, batch size 128 và cosine learning-rate schedule. \\
+        Số lần lặp
+            & Ba seed độc lập: $0$, $1$ và $2$; báo cáo mean $\pm$ standard deviation. \\
+        Đại lượng theo dõi
+            & $\lVert\partial\mathcal{L}/\partial\mathbf{h}^{(l)}\rVert_2$,
+              $\lVert\partial\mathcal{L}/\partial\mathbf{W}^{(l)}\rVert_2$,
+              tỉ lệ gradient lớp đầu/lớp cuối, loss và accuracy. \\
+        \bottomrule
+    \end{tabularx}
+\end{table}
+
+Từ baseline trên, mỗi nhóm thí nghiệm chỉ thay đổi một thành phần được đánh số
+trong Hình~\ref{fig:modular-vanishing-ablation}:
+\begin{enumerate}[label=\textbf{\arabic*.}, leftmargin=2.2em, itemsep=3pt]
+    \item \textbf{Độ sâu:} $L\in\{4,8,16,32\}$, giữ độ rộng bằng 64.
+    \item \textbf{Độ rộng:} $n_l\in\{32,64,128\}$; bổ sung một cấu hình có
+    bottleneck 16 kênh ở giữa mạng.
+    \item \textbf{Activation:} Sigmoid, Tanh hoặc ReLU.
+    \item \textbf{Khởi tạo:} Gaussian
+    $\mathcal{N}(0,0.01^2)$, Xavier hoặc He initialization.
+    \item \textbf{Normalization:} không dùng normalization, BatchNorm hoặc
+    LayerNorm.
+    \item \textbf{Shortcut:} tắt residual connection, dùng identity shortcut,
+    hoặc dùng projection shortcut khi kích thước hai nhánh khác nhau.
+\end{enumerate}
+
+Khi thay đổi độ sâu hoặc độ rộng, số tham số và chi phí tính toán cũng thay đổi;
+do đó hai đại lượng này cần được báo cáo cùng kết quả. Với các nhóm còn lại,
+kiến trúc và số tham số được giữ nguyên. Dữ liệu, thứ tự mini-batch, optimizer,
+learning-rate schedule và tập seed phải giống baseline để khác biệt trong
+gradient có thể được quy về thành phần đang khảo sát.
 
 \subsection{MLP sâu dùng sigmoid}
 \textit{Phụ trách: Khanh}
@@ -1133,5 +1440,95 @@ Không có một giải pháp duy nhất cho mọi mô hình. Nên kết hợp a
     \item Tổng hợp dấu hiệu chẩn đoán và nhóm giải pháp phù hợp cho MLP/CNN/RNN.
     \item Nêu thông điệp cuối: thiết kế kiến trúc, khởi tạo và giám sát quá trình huấn luyện phải được xem xét đồng thời.
 \end{itemize}
+
+\clearpage
+\renewcommand{\refname}{Tài liệu tham khảo}
+\addcontentsline{toc}{section}{Tài liệu tham khảo}
+\begin{thebibliography}{99}
+
+\bibitem{fiedler2024}
+Fiedler, K. (2024) `Olympische Spiele? Barenburg macht's ganz anders',
+\textit{Kreiszeitung}, 12 August. Available at:
+\url{https://www.kreiszeitung.de/lokales/diepholz/kirchdorf-ort120456/olympische-spiele-barenburg-macht-ganz-anders-spass-olympiade-93239133.html}
+(Accessed: 30 September 2026).
+
+\bibitem{hanin2018}
+Hanin, B. (2018) `Which Neural Net Architectures Give Rise to Exploding and
+Vanishing Gradients?', \textit{Advances in Neural Information Processing
+Systems}, 31, pp.~580--589. Available at:
+\url{https://proceedings.neurips.cc/paper_files/paper/2018/hash/13f9896df61279c928f19721878fac41-Abstract.html}
+(Accessed: 30 September 2026).
+
+\bibitem{he2016identity}
+He, K., Zhang, X., Ren, S. and Sun, J. (2016) `Identity Mappings in Deep
+Residual Networks', in Leibe, B., Matas, J., Sebe, N. and Welling, M. (eds.)
+\textit{Computer Vision -- ECCV 2016}. Lecture Notes in Computer Science,
+vol.~9908. Cham: Springer, pp.~630--645.
+doi: \href{https://doi.org/10.1007/978-3-319-46493-0_38}{10.1007/978-3-319-46493-0\_38}.
+
+\bibitem{krizhevsky2009}
+Krizhevsky, A. (2009) \textit{Learning Multiple Layers of Features from Tiny
+Images}. Technical report. Toronto: University of Toronto. Available at:
+\url{https://www.cs.toronto.edu/~kriz/learning-features-2009-TR.pdf}
+(Accessed: 30 September 2026).
+
+\bibitem{rumelhart1986}
+Rumelhart, D.E., Hinton, G.E. and Williams, R.J. (1986) `Learning
+representations by back-propagating errors', \textit{Nature}, 323,
+pp.~533--536. doi:
+\href{https://doi.org/10.1038/323533a0}{10.1038/323533a0}.
+
+\bibitem{bengio1994}
+Bengio, Y., Simard, P. and Frasconi, P. (1994) `Learning long-term
+dependencies with gradient descent is difficult', \textit{IEEE Transactions
+on Neural Networks}, 5(2), pp.~157--166. doi:
+\href{https://doi.org/10.1109/72.279181}{10.1109/72.279181}.
+
+\bibitem{glorot2010}
+Glorot, X. and Bengio, Y. (2010) `Understanding the difficulty of training
+deep feedforward neural networks', in Teh, Y.W. and Titterington, M. (eds.)
+\textit{Proceedings of the Thirteenth International Conference on Artificial
+Intelligence and Statistics}. Proceedings of Machine Learning Research,
+vol.~9, pp.~249--256. Available at:
+\url{https://proceedings.mlr.press/v9/glorot10a.html}
+(Accessed: 30 September 2026).
+
+\bibitem{he2015rectifiers}
+He, K., Zhang, X., Ren, S. and Sun, J. (2015) `Delving Deep into Rectifiers:
+Surpassing Human-Level Performance on ImageNet Classification', in
+\textit{Proceedings of the IEEE International Conference on Computer Vision},
+pp.~1026--1034. doi:
+\href{https://doi.org/10.1109/ICCV.2015.123}{10.1109/ICCV.2015.123}.
+
+\bibitem{ioffe2015batchnorm}
+Ioffe, S. and Szegedy, C. (2015) `Batch Normalization: Accelerating Deep
+Network Training by Reducing Internal Covariate Shift', in Bach, F. and Blei,
+D. (eds.) \textit{Proceedings of the 32nd International Conference on Machine
+Learning}. Proceedings of Machine Learning Research, vol.~37, pp.~448--456.
+Available at: \url{https://proceedings.mlr.press/v37/ioffe15.html}
+(Accessed: 30 September 2026).
+
+\bibitem{long-schoenholz2017}
+Schoenholz, S.S., Gilmer, J., Ganguli, S. and Sohl-Dickstein, J. (2017) `Deep
+Information Propagation', \textit{Proceedings of the 5th International
+Conference on Learning Representations}. Available at:
+\url{https://research.google/pubs/deep-information-propagation/}
+(Accessed: 30 September 2026).
+
+\bibitem{long-pascanu2013}
+Pascanu, R., Mikolov, T. and Bengio, Y. (2013) `On the difficulty of training
+recurrent neural networks', in Dasgupta, S. and McAllester, D. (eds.)
+\textit{Proceedings of the 30th International Conference on Machine Learning}.
+Proceedings of Machine Learning Research, vol.~28(3), pp.~1310--1318.
+Available at: \url{https://proceedings.mlr.press/v28/pascanu13.html}
+(Accessed: 30 September 2026).
+
+\bibitem{long-goodfellow2016}
+Goodfellow, I., Bengio, Y. and Courville, A. (2016) \textit{Deep Learning}.
+Cambridge, MA: MIT Press. Available at:
+\url{https://www.deeplearningbook.org/}
+(Accessed: 30 September 2026).
+
+\end{thebibliography}
 
 \end{document}

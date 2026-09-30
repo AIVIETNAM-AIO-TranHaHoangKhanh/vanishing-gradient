@@ -7,7 +7,7 @@ OUTPUT_DIR := $(PROJECT_ROOT)/output/pdf
 
 pdf:
 	mkdir -p "$(OUTPUT_DIR)"
-	latexmk -cd -xelatex -interaction=nonstopmode -halt-on-error -file-line-error \
+	latexmk -cd -xelatex -synctex=1 -interaction=nonstopmode -halt-on-error -file-line-error \
 		-outdir="$(OUTPUT_DIR)" "$(MAIN_DIR)/$(MAIN_FILE)"
 
 clean:
