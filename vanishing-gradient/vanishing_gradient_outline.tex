@@ -618,9 +618,9 @@ nước sẽ ngày càng ít hoặc có thể là không có gì.}
 
 \section{Kiến trúc nền tảng của mạng Neural Network}
 \textit{Người phụ trách: Trang, Trí}
- 
+
 Mạng neural nhân tạo là một hàm tham số hóa $f_{\theta}:\mathbb{R}^{n}\to\mathbb{R}^{K}$ được xây dựng bằng cách xếp chồng nhiều phép biến đổi đơn giản. Mỗi phép biến đổi gồm một bước \emph{tuyến tính} và một bước \emph{phi tuyến}; chính sự kết hợp này cho phép mạng xấp xỉ những quan hệ rất phức tạp giữa đầu vào và đầu ra. Phần này trình bày các khối cơ bản, cách chúng được ghép lại và cách mạng học từ dữ liệu, làm nền tảng để giải thích hiện tượng vanishing gradient ở phần sau.
- 
+
 \subsection{Neuron, trọng số và bias}
 Neuron là đơn vị tính toán nhỏ nhất của mạng. Với vector đầu vào $\mathbf{x}\in\mathbb{R}^{n}$, một lớp gồm $m$ neuron trước hết thực hiện phép biến đổi tuyến tính
 \begin{equation}
@@ -629,15 +629,15 @@ Neuron là đơn vị tính toán nhỏ nhất của mạng. Với vector đầu
     \label{eq:linear}
 \end{equation}
 rồi đi qua hàm kích hoạt phi tuyến $\sigma$ áp dụng theo từng phần tử để cho đầu ra $\mathbf{a}=\sigma(\mathbf{z})$. Với neuron thứ $j$, ta có $z_j=\sum_{i=1}^{n}W_{ji}x_i+b_j$, tức là tổng có trọng số của các đặc trưng đầu vào cộng thêm một hằng số.
- 
+
 \begin{itemize}
     \item \textbf{Trọng số $\mathbf{W}$} cho biết mức độ và chiều ảnh hưởng của từng đặc trưng lên neuron: trọng số dương khuếch đại, trọng số âm ức chế, trọng số gần $0$ khiến đặc trưng gần như bị bỏ qua. Đây là nhóm tham số chính được điều chỉnh trong quá trình huấn luyện.
     \item \textbf{Bias $\mathbf{b}$} dịch chuyển ngưỡng kích hoạt của neuron, giúp mô hình biểu diễn được các hàm không đi qua gốc tọa độ. Về mặt hình học, $\mathbf{W}$ quyết định hướng của siêu phẳng phân chia, còn $\mathbf{b}$ quyết định vị trí của nó.
     \item \textbf{Hàm kích hoạt $\sigma$} đưa tính phi tuyến vào mạng. Nếu bỏ $\sigma$, tích của nhiều ma trận vẫn là một ma trận, nên mạng sâu chỉ tương đương một phép biến đổi tuyến tính duy nhất.
 \end{itemize}
- 
+
 Ba hàm kích hoạt thường gặp, cùng đạo hàm của chúng, được tóm tắt trong Bảng~\ref{tab:activation}. Cột cuối sẽ đặc biệt quan trọng ở Mục~\ref{sec:vanishing}.
- 
+
 \begin{table}[htbp]
     \centering
     \caption{Các hàm kích hoạt phổ biến và độ lớn đạo hàm.}
@@ -652,7 +652,7 @@ Ba hàm kích hoạt thường gặp, cùng đạo hàm của chúng, được t
         \bottomrule
     \end{tabular}
 \end{table}
- 
+
 \subsection{Các lớp của mạng neural}
 Mạng truyền thẳng (feedforward) được tổ chức thành ba loại lớp:
 \begin{itemize}
@@ -660,7 +660,7 @@ Mạng truyền thẳng (feedforward) được tổ chức thành ba loại lớ
     \item \textbf{Các lớp ẩn (hidden layers)} biến đổi dữ liệu qua nhiều bước liên tiếp. Thông thường, các lớp đầu học đặc trưng đơn giản (cạnh, tần suất từ), còn các lớp sau kết hợp chúng thành biểu diễn trừu tượng hơn (hình dạng, ngữ nghĩa).
     \item \textbf{Lớp đầu ra (output layer)} tạo dự đoán $\hat{\mathbf{y}}$. Hàm kích hoạt của lớp này phụ thuộc bài toán: tuyến tính cho hồi quy, sigmoid cho phân loại nhị phân, softmax cho phân loại nhiều lớp.
 \end{itemize}
- 
+
 Thông tin đi từ lớp này sang lớp kế tiếp. Với mạng gồm $L$ lớp (không tính lớp đầu vào) và quy ước $\mathbf{a}^{(0)}=\mathbf{x}$, ta có
 \begin{equation}
     \mathbf{z}^{(l)}=\mathbf{W}^{(l)}\mathbf{a}^{(l-1)}+\mathbf{b}^{(l)},
@@ -670,10 +670,10 @@ Thông tin đi từ lớp này sang lớp kế tiếp. Với mạng gồm $L$ l�
     \label{eq:layer}
 \end{equation}
 Tập tham số của toàn mạng là $\theta=\{\mathbf{W}^{(l)},\mathbf{b}^{(l)}\}_{l=1}^{L}$.
- 
+
 \subsection{Forward pass và hàm mất mát}
 \textbf{Forward pass} là việc áp dụng công thức~\eqref{eq:layer} lần lượt từ lớp $1$ đến lớp $L$ để thu được dự đoán $\hat{\mathbf{y}}=\mathbf{a}^{(L)}$. Trong quá trình này, các giá trị trung gian $\mathbf{z}^{(l)}$ và $\mathbf{a}^{(l)}$ được lưu lại vì bước lan truyền ngược sẽ cần đến chúng.
- 
+
 Sau đó, \textbf{hàm mất mát} (loss) đo độ lệch giữa dự đoán $\hat{\mathbf{y}}$ và nhãn thật $\mathbf{y}$. Hai lựa chọn phổ biến là
 \begin{align}
     \mathcal{L}_{\mathrm{MSE}} &= \frac{1}{N}\sum_{i=1}^{N}\bigl\lVert \hat{\mathbf{y}}_i-\mathbf{y}_i\bigr\rVert_2^{2}
@@ -682,10 +682,10 @@ Sau đó, \textbf{hàm mất mát} (loss) đo độ lệch giữa dự đoán $\
     && \text{(phân loại)}.
 \end{align}
 Loss là một đại lượng vô hướng: nó cho biết mô hình đang sai bao nhiêu và là mục tiêu cần cực tiểu hóa. Đồng thời, nó là điểm xuất phát của lan truyền ngược.
- 
+
 \subsection{Backpropagation và cập nhật tham số}
 Để giảm loss, ta cần biết mỗi tham số ảnh hưởng đến loss như thế nào, tức là \textbf{gradient} $\partial\mathcal{L}/\partial\mathbf{W}^{(l)}$ và $\partial\mathcal{L}/\partial\mathbf{b}^{(l)}$. \textbf{Backpropagation} tính đồng thời gradient của mọi lớp một cách hiệu quả nhờ \textbf{quy tắc chuỗi} (chain rule), đi ngược từ lớp đầu ra về lớp đầu vào và tái sử dụng kết quả trung gian.
- 
+
 Đặt sai số cục bộ $\boldsymbol{\delta}^{(l)}=\partial\mathcal{L}/\partial\mathbf{z}^{(l)}$. Khi đó
 \begin{align}
     \boldsymbol{\delta}^{(L)} &= \frac{\partial\mathcal{L}}{\partial\mathbf{a}^{(L)}}\odot\sigma'\!\bigl(\mathbf{z}^{(L)}\bigr), \label{eq:delta-out}\\
@@ -702,16 +702,16 @@ với $\odot$ là tích Hadamard (nhân từng phần tử). Có gradient rồi,
     \label{eq:gd}
 \end{equation}
 Toàn bộ một vòng huấn luyện gồm bốn bước lặp lại: \emph{forward} $\rightarrow$ \emph{tính loss} $\rightarrow$ \emph{backward} $\rightarrow$ \emph{cập nhật tham số}.
- 
+
 \begin{notebox}
 Công thức đệ quy~\eqref{eq:delta-rec} cho thấy $\boldsymbol{\delta}^{(l)}$ được tạo ra bằng cách nhân liên tiếp các ma trận $(\mathbf{W}^{(k)})^{\top}$ và các đạo hàm $\sigma'$ qua từng lớp. Một chuỗi tích dài như vậy có thể co lại hoặc phình ra rất nhanh. Đây chính là gốc rễ của hiện tượng vanishing gradient được phân tích ở phần tiếp theo.
 \end{notebox}
- 
- 
+
+
 \section{Dấu hiệu nhận biết Vanishing Gradient}
 \label{sec:vanishing}
 \textit{Người phụ trách: Trang, Trí}
- 
+
 \subsection{Cơ chế hình thành}
 Khai triển đệ quy~\eqref{eq:delta-rec} cho thấy sai số tại lớp $l$ là tích của nhiều thừa số:
 \begin{equation}
@@ -720,10 +720,10 @@ Khai triển đệ quy~\eqref{eq:delta-rec} cho thấy sai số tại lớp $l$ 
     \label{eq:product}
 \end{equation}
 Nếu chuẩn của mỗi thừa số nhỏ hơn $1$, gradient co lại gần như theo hàm mũ khi đi ngược về các lớp đầu. Ví dụ, với sigmoid ta có $\sigma'(z)\le 0{,}25$; chỉ riêng thành phần này, sau $10$ lớp gradient đã bị nhân với không quá $0{,}25^{10}\approx 10^{-6}$. Khi đó các lớp gần đầu vào nhận được tín hiệu học gần như bằng không, dù lớp cuối vẫn học bình thường. Hiện tượng này được gọi là \textbf{vanishing gradient}.
- 
+
 \subsection{Các dấu hiệu quan sát được}
 Các dấu hiệu dưới đây có thể được kiểm tra trực tiếp trong quá trình huấn luyện; Bảng~\ref{tab:signs} tóm tắt cách phát hiện từng dấu hiệu.
- 
+
 \begin{enumerate}
     \item \textbf{Gradient ở các lớp gần đầu vào rất nhỏ hoặc gần bằng $0$.} Chuẩn gradient $\lVert\nabla_{\mathbf{W}^{(l)}}\mathcal{L}\rVert$ của lớp đầu nhỏ hơn lớp cuối nhiều bậc độ lớn (chẳng hạn $10^{-8}$ so với $10^{-2}$), và giảm đều theo chiều từ lớp cuối về lớp đầu.
     \item \textbf{Trọng số của các lớp đầu thay đổi rất ít qua nhiều epoch.} Bước cập nhật $\eta\,\nabla\mathcal{L}$ gần như bằng $0$ nên các trọng số này gần như đứng yên so với giá trị khởi tạo.
@@ -732,7 +732,7 @@ Các dấu hiệu dưới đây có thể được kiểm tra trực tiếp tron
     \item \textbf{Lớp cuối học được trong khi các lớp đầu gần như không học.} Mô hình chỉ tinh chỉnh phần đầu ra trên những đặc trưng gần như ngẫu nhiên, nên độ chính xác bị chặn ở mức thấp.
     \item \textbf{Với RNN, mô hình ghi nhớ kém các phụ thuộc dài hạn.} Gradient lan truyền qua nhiều bước thời gian bị co lại, nên mô hình chỉ nắm được ngữ cảnh gần và bỏ sót thông tin ở xa.
 \end{enumerate}
- 
+
 \begin{table}[htbp]
     \centering
     \caption{Tóm tắt dấu hiệu vanishing gradient và cách kiểm tra.}
@@ -751,12 +751,42 @@ Các dấu hiệu dưới đây có thể được kiểm tra trực tiếp tron
         \bottomrule
     \end{tabularx}
 \end{table}
- 
+
 \subsection{Phân biệt với các nguyên nhân khác}
 Loss giảm chậm chưa chắc do vanishing gradient. Cần loại trừ các nguyên nhân thường gặp khác như tốc độ học $\eta$ quá nhỏ, lỗi cài đặt (quên gọi \texttt{zero\_grad}, sai nhãn), hay ``dead ReLU'' (neuron luôn xuất ra $0$). Kết luận chỉ đáng tin khi \emph{đồng thời} thấy gradient các lớp đầu nhỏ hơn hẳn các lớp cuối \emph{và} activation bão hòa (hoặc đạo hàm nhỏ) ở những lớp đó.
 
 \section{Cơ chế Vanishing Gradient trong Backpropagation}
-\textit{Người phụ trách: Khanh}
+Xét một mạng Perceptron đa lớp (MLP) gồm $L$ lớp (độ sâu $L$). Quá trình lan truyền tiến (foward pass) biến đổi vector đầu vào $x_0 \in \mathbb{R}^{N_0}$ thành vector đầu ra $x_L \in \mathbb{R}^{N_L}$ thông qua chuỗi của các lớp ẩn:
+
+\begin{align}
+    y_l &= W_l x_l + b_l, \quad l = 0, 1, \dots, L-1 \\
+    x_{l+1} &= \sigma(y_l), \quad l = 0, 1, \dots, L-1
+\end{align}
+trong đó $x_l \in \mathbb{R}^{N_l}$ là vector kích hoạt tại lớp $l$, $W_l \in \mathbb{R}^{N_{l+1} \times N_l}$ là ma trận trọng số, $b_l \in \mathbb{R}^{N_{l+1}}$ là vector độ lệch (bias), và $sigma(\cdot)$ là hàm kích hoạt phi tuyến theo từng phần tử.
+
+Giả sử hàm mất mát trên một mẫy dữ liệu là $\mathcal{l}(y, x_l)$. Đạo hàm của hàm mất mát với ma trận trọng số $W_l$ tại lớp thứ $s$ ($0 \le s \le L-1$) được tính theo thuật toán lan truyền ngược thông qua tích ngoài (outer product):
+\begin{equation}
+    \frac{\partial \mathcal{l}}{\partial W_s} = \left[ \text{diag}(d_s) B_s \right] \otimes x_s^T
+\end{equation}
+trong đó:
+\begin{itemize}
+    \item $d_x = \sigma'(y_s) \in \mathbb{R}^{N_{s+1}}$ là vector đạo hàm của hàm kích hoạt tại lớp $s$
+    \item $\text {diag}(d_s)$ là ma trận đường chéo kích thước $N_{s+1} \times N_{s+1}$ chứa các phần tử của $d_s$.
+    \item $E = \frac{\partial \mathcal{L}}{\partial x_L}$ là vector lỗi tại đầu ra (ví dự $E = -2(y - x_L)$ đối với hàm MSE).
+    \item $B_s(E)$ là toán tử tuyến tính lan truyền ngược vector lỗi từ lớp $L$ về lớp $s+1$:
+    \begin{equation}
+        B_s(E)= \left( \frac{\partial x_l}{\partial x_{s+1}} \right)^T E
+    \end{equation}
+\end{itemize}
+Ma trận Jacobian chuyển tiếp giữa hai lớp liên tiếp $l$ và $l+1$ có dạng:
+\begin{equation}
+    \frac{\partial x_{l+1}}{\partial x_l} = \text{diag}(d_l) W_l
+\end{equation}
+Do đó, ma trận Jacobian Đầu vào - Đầu ra (Input - Output Jacobian - IOJ)
+$\frac{\partial x_L}{\partial x_{S+1}}$ biểu diễn sự lan truyền đạo hàm qua $L-s-1$ lớp:
+\begin{equation}
+    \frac{\partial x_l}{\partial x_{s+1}} = \frac{\partial x_L}{\partial x_{L-1}} \frac{\partial x_{L-1}}{\partial x_{L-2}} \dots \frac{\partial x_{s+2}}{\partial x_{s+1}} = \prod_{l=s+1}^{L-1} \text{diag}(d_l) W_l
+\end{equation}
 
 \subsection{Chain rule trong mạng nhiều lớp}
 Với mạng sâu, gradient tại một lớp sớm là tích của nhiều đạo hàm cục bộ:
@@ -792,7 +822,7 @@ Phân tích cách $f'(z)$ và phổ của ma trận trọng số cùng quyết �
 
 Các thuật toán tối ưu hóa dùng để huấn luyện mô hình học sâu thường mang tính lặp lại thay vì dựa trên một công thức cố định để đưa ra kết quả. Vì vậy ta cần phải đưa ra một điểm khởi tạo ban đầu để bắt đầu vòng lặp. Hơn nữa, do việc huấn luyện các mô hình học sâu có độ phức tạp cao nên hầu hết các thuật toán đều bị ảnh hưởng lớn bởi lựa chọn điểm khởi tạo.
 
-Điểm khởi tạo ban đầu có thể quyết định khả năng hội tụ của thuật toán. Một số điểm khởi tạo không ổn định có thể dẫn đến các sự cố về mặt tính toán số học và làm cho thuật toán thất bại hoàn toàn. Ngay cả khi quá trình học có thể hội tụ, điểm khởi tạo vẫn có thể quyết định tốc độ hội tụ nhanh hay chậm, cũng như việc nó sẽ hội tụ về một điểm có loss cao hay thấp. 
+Điểm khởi tạo ban đầu có thể quyết định khả năng hội tụ của thuật toán. Một số điểm khởi tạo không ổn định có thể dẫn đến các sự cố về mặt tính toán số học và làm cho thuật toán thất bại hoàn toàn. Ngay cả khi quá trình học có thể hội tụ, điểm khởi tạo vẫn có thể quyết định tốc độ hội tụ nhanh hay chậm, cũng như việc nó sẽ hội tụ về một điểm có loss cao hay thấp.
 
 Mục 4.1 đã chỉ ra rằng gradient tại một lớp ở phía đầu mạng là tích của các ma trận Jacobian cục bộ:
 \[ \frac{\partial \mathcal{L}}{\partial \mathbf{h}^{(l)}} = \left( \prod_{k=l+1}^{L} \frac{\partial h^{(k)}}{\partial \mathbf{h}^{(k-1)}} \right) \frac{\partial \mathcal{L}}{\partial \mathbf{h}^{(L)}}, \qquad \frac{\partial \mathbf{h}^{(k)}}{\partial \mathbf{h}^{(k-1)}} = \operatorname{diag}\big( f'(z^{(k)}) \big) W^{(k)}. \]
@@ -811,7 +841,7 @@ Việc khởi tạo sẽ chọn $\operatorname{Var}(W)$, và do đó sẽ quyế
 
 Khi trọng số quá nhỏ, ta sẽ có $\chi < 1$ vì mỗi lớp sẽ làm thu nhỏ cả tín hiệu lan truyền tiến (forward signal) lẫn gradient lan truyền ngược. Ví dụ, với chiều rộng lớp $n = 100$ và trọng số được lấy từ phân phối $\mathcal{N}(0, 0.01^2)$, ta có $n \operatorname{Var}(W) = 10^{-2}$, do đó độ lớn của tín hiệu và gradient bị chia cho 10 ở mỗi lớp, và sau 20 lớp, nó bị nhân với $10^{-20}$. Các lớp ở sâu khi đó sẽ nhận được giá trị kích hoạt rất nhỏ gần như giống hệt nhau với mọi đầu vào (xem Mục 5.4), và các lớp ở phía trước sẽ gần như không nhận được gradient nào.
 
-Ngược lại, trọng số quá lớn sẽ làm cho $|z^{(k)}|$ tăng lên và đẩy các đơn vị vào vùng bão hòa của hàm sigmoid và tanh, nơi $f'(z)$ gần bằng 0 (Mục 5.1). Một đơn vị bị bão hòa hầu như không truyền được gradient. Glorot và Bengio (2010) đã quan sát thấy hiện tượng bão hòa này ở các lớp ẩn của mạng sigmoid và tanh sâu. 
+Ngược lại, trọng số quá lớn sẽ làm cho $|z^{(k)}|$ tăng lên và đẩy các đơn vị vào vùng bão hòa của hàm sigmoid và tanh, nơi $f'(z)$ gần bằng 0 (Mục 5.1). Một đơn vị bị bão hòa hầu như không truyền được gradient. Glorot và Bengio (2010) đã quan sát thấy hiện tượng bão hòa này ở các lớp ẩn của mạng sigmoid và tanh sâu.
 
 Tuy nhiên, hiện tượng bão hòa không phải là toàn bộ vấn đề. Các trọng số lớn cũng khuếch đại tín hiệu. Poole (2016) và Schoenholz (2017) cho thấy rằng khi phương sai của trọng số vượt qua một giá trị tới hạn (critical value), gradient trung bình sẽ tăng theo độ sâu thay vì thu nhỏ lại. Vì vậy, trọng số quá lớn không chỉ gây bão hòa các unit làm mất gradient, mà còn làm mất ổn định hệ thống và có thể khiến gradient bùng nổ.
 
@@ -822,7 +852,7 @@ Chúng ta cần lưu ý rằng việc khởi tạo chỉ đảm bảo một đi�
 \subsection{Độ sâu của mạng}
 
 Mục 4.1 đã viết gradient tại lớp $l$ dưới dạng:
-\[ 
+\[
 \frac{\partial \mathcal{L}}{\partial \mathbf{h}^{(l)}}
 = \left( \prod_{k=l+1}^{L} \frac{\partial \mathbf{h}^{(k)}}{\partial \mathbf{h}^{(k-1)}} \right) \frac{\partial \mathcal{L}}{\partial \mathbf{h}^{(L)}}.
 \]
@@ -833,7 +863,7 @@ Nếu kích thước của mỗi nhân tử đều nhỏ hơn 1, tích này sẽ
 \[
 \left\| \frac{\partial \mathcal{L}}{\partial \mathbf{h}^{(l)}} \right\| \;\le\; \gamma^{\,L-l}\, \left\| \frac{\partial \mathcal{L}}{\partial \mathbf{h}^{(L)}} \right\| .
 \]
-Độ sâu chính là số mũ trong chặn trên này. Một hệ số $\gamma = 0.9$ trên mỗi lớp là vô hại đối với một mạng nông (ví dụ: $0.9^{10} \approx 0.35$), nhưng nó lại rất nghiêm trọng với một mạng sâu (ví dụ: $0.9^{100} = 3 \times 10^5$). Lập luận tương tự theo chiều ngược lại sẽ giải thích hiện tượng bùng nổ gradient (ví dụ: $1.1^{10} \approx 2.6$ và $1.1^{100} \approx 1.4 \times 10^4$). Ví dụ về hàm sigmoid ở Mục 4.4, nơi mỗi nhân tử tối đa là 0.25, là trường hợp cực đoan của chặn trên này. 
+Độ sâu chính là số mũ trong chặn trên này. Một hệ số $\gamma = 0.9$ trên mỗi lớp là vô hại đối với một mạng nông (ví dụ: $0.9^{10} \approx 0.35$), nhưng nó lại rất nghiêm trọng với một mạng sâu (ví dụ: $0.9^{100} = 3 \times 10^5$). Lập luận tương tự theo chiều ngược lại sẽ giải thích hiện tượng bùng nổ gradient (ví dụ: $1.1^{10} \approx 2.6$ và $1.1^{100} \approx 1.4 \times 10^4$). Ví dụ về hàm sigmoid ở Mục 4.4, nơi mỗi nhân tử tối đa là 0.25, là trường hợp cực đoan của chặn trên này.
 
 Mục 5.2 đã chỉ ra rằng, trên trung bình, mỗi lớp sẽ scale gradient theo một số hệ số khuếch đại $\chi = n \operatorname{Var}(W) \mathbb{E}[f'(z)^2]$, do đó
 \[

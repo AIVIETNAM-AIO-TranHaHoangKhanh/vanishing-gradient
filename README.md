@@ -19,7 +19,7 @@ output/pdf/vanishing_gradient_outline.pdf
 
 Xoá các file trung gian do LaTeX sinh ra:
 
-```bash
+```bash`
 make clean
 ```
 
