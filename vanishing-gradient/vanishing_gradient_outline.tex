@@ -757,7 +757,6 @@ Loss giảm chậm chưa chắc do vanishing gradient. Cần loại trừ các n
 
 \section{Cơ chế Vanishing Gradient trong Backpropagation}
 Xét một mạng Perceptron đa lớp (MLP) gồm $L$ lớp (độ sâu $L$). Quá trình lan truyền tiến (foward pass) biến đổi vector đầu vào $x_0 \in \mathbb{R}^{N_0}$ thành vector đầu ra $x_L \in \mathbb{R}^{N_L}$ thông qua chuỗi của các lớp ẩn:
-
 \begin{align}
     y_l &= W_l x_l + b_l, \quad l = 0, 1, \dots, L-1 \\
     x_{l+1} &= \sigma(y_l), \quad l = 0, 1, \dots, L-1
@@ -810,12 +809,83 @@ Phân tích cách $f'(z)$ và phổ của ma trận trọng số cùng quyết �
 \section{Các yếu tố gây Vanishing Gradient}
 
 \subsection{Hàm activation}
-\textit{Người phụ trách: Khanh}
+% \textit{Người phụ trách: Khanh}
+% \begin{itemize}
+%     \item Sigmoid và tanh có vùng bão hòa với đạo hàm rất nhỏ.
+%     \item Sigmoid có đạo hàm cực đại chỉ bằng $0.25$.
+%     \item So sánh với ReLU và các biến thể để làm rõ ảnh hưởng của activation.
+% \end{itemize}
+Trong ma trận Jacobian từng lớp $\frac{\partial x_{l+1}}{\partial x_l} = \text{diag}(d_l) W_l$, ma trận đường chéo$\text{diag}(d_l)$ chứa đạo hàm của hàm kích hoat $d_l = \sigma'(y_l)$ đóng vai trò là hệ số điều tiết biên độ gradient khi truyền qua mội lớp.
+
+Giả sử đạo hàm của hàm kích hoạt bị chặn trên bởi hằng số $r > 0$:
+\begin{equation}
+    r = \sup_{y \in \mathbb{R}} |\sigma'(y)| \implies \|\text{diag} (d_l)\|_2 \le r
+\end{equation}
+
+Nếu $r < 1$, ma trận $\text{diag}(d_l)$ đóng vai trò là một toán tử thu nhỏ )contraction operator), trực tiếp làm suy giảm biên độ tín hiệu lỗi qua từng lop81 lan truyền ngược.
+
+% a.Hàm Sigmoid (Logistic Function)
+\textbf{a.Hàm Sigmoid (Logistic Function)}
+\begin{equation}
+\sigma(y) = \frac{1}{1 + ê{-y}}
+\end{equation}
+Đạo hàm cấp một của hàm Sigmoid có dạng:
+\begin{equation}
+ \sigma'(y) = \sigma(y)\left(1 - \sigma(y)\right)
+\end{equation}
 
 \begin{itemize}
-    \item Sigmoid và tanh có vùng bão hòa với đạo hàm rất nhỏ.
-    \item Sigmoid có đạo hàm cực đại chỉ bằng $0.25$.
-    \item So sánh với ReLU và các biến thể để làm rõ ảnh hưởng của activation.
+    \item \textbf{Giá trị cực đại:} $sigma'(y)$ đạt giá trị lớn nhất tại $y = 0$ với $r = \max_y \sigma'(y) = 0.25$.
+    \item \textbf{Tác động đến Gradient:}: Vì $\|\text{diag}(d_l)\|_2 \le 0.25$, ngay cả khi ma trận trọng số thỏa mãn $ \|W_l\|_2 = 1$, tín hiệu gradient khi đi qua $L-1$ lớp Sigmoid sẽ bị thu nhỏ với tốc độ ít nhất là":
+    \begin{equation}
+        \left \| \prod_{l=1}^{L-1} \text{diag}(d_l) \right\|_2 \le (0.25)^{L-1} = 4^{-(L-1)}
+    \end{equation}
+    \item \textbf{Hiện tượng Bão hòa (Saturation) :} Khi $|y| \gg 0$ (nguồn tín hiệu đầu vào lớp quá lớn hoặc quá nhỏ), $\sigma(y) \to 1$ hoặc $\sigma(y) \ to 0$, dẫn đến $\sigma(y) \to 0$, dẫn đến $\sigma'(y) \to 0$. Vùng bão hòa này khiến cho $d_l \approx 0$, lập tức triệt tiêu gradient truyền qua lớp đó.
+\end{itemize}
+
+% b. Hàm tangent Hyperbol (Tanh):
+\textbf{b. Hàm tangent Hyperbol (Tanh):}
+Hàm Tanh ép giá trị đầu ra về khoảng $(-1, 1)$:
+\begin{equation}
+    \sigma(y) = \tanh(y) = \frac{e^y - e^{-y}}{e^y + e^{-y}}
+\end{equation}
+Đạo hàm của hàm Tanh được tính theo công thức:
+\begin{equation}
+    \sigma'(y) = 1 - \tanh^2(y)
+\end{equation}
+
+\begin{itemize}
+    \item \textbf{Giá trị cực đại:} $r = \max_y \sigma'(y) = 1.0$ (đạt được tại $y = 0$).
+    \item \textbf{So sánh với Sigmoid:} Tanh cải thiện đáng kể so với Sigmoid vì $r = 1.0$ giúp gradient không bị thu nhỏ cưỡng bức tại vùng làm việc tuyến tính ($y \approx 0 $)
+    \item \textbf{Hạn chế bão hòa:} Tuy nhiên, khi $|y| > 2$, $\tanh^2(y) \to 1$ khiến $\sigma'(y) \to 0$. Do đó , nếu trọng số $w_l$ khiến giá trị $y_l$ rơi vào vùng bão hòa hai đầu, hiện tượng Vanishing Gradient vẫn xảy ra nghiêm trọng.
+\end{itemize}
+
+% c. Hàm Tuyến tính Từng phần (ReLU \& Leaky ReLU):
+\textbf{c. Hàm Tuyến tính Từng phần (ReLU \& Leaky ReLU):}
+Để khắc phục hiện tượng bão hòa đạo hàm của các hàm dạng Sigmoid và Tanh, hàm ReLu (Retified Linear Unit) được sử dụng:
+\begin{equation}
+    \sigma(y) = \max(o, y) \implies \sigma'(y) = \begin{cases} 1 & \text{nếu } y > 0 \\ 0 & \text{nếu } y \le 0 \end{cases}
+\end{equation}
+\begin{itemize}
+    \item \textbf{Ưu điểm giải quyết Vanishing Gradient:} Đối với các neuron ở trạng thai 1kích hoạt ($y > 0$), đạo hàm luôn bằng $1$ ($r = 1.0$). Điều này loại bỏ hoàn toàn hệ số thu nhỏ đạo hàm của hàm kích hoạt, giúp gradient truyền qua nhiều lop81 mà không bị suy giảm do $\sigma'(y)$.
+    \item \textbf{Vấn đề "Dying ReLU":} Khi $y \le 0$, $sigma'(y) = 0$. Nếu một neuron bị rơi vào vùng âm với trọng số cập nhật không phù hợp, nó sẽ vĩnh viễn không phát tín hiệu gradient về sau ($\text{diag}(d_l) = 0$).
+    \item \textbf{Biến thể Leaky ReLu/ Parametric ReLU:} Khắc phục điểm chế bằng cách gán một độ dốc nhỏ $\alpha \approx 0.01$ cho vùng âm:
+    \begin{equation}
+        \sigma'(y) = \begin{cases} 1 & \text{nếu } y > 0 \\  \alpha & \text{nếu } y \le 0 \end{cases}
+    \end{equation}
+    Giúp duy trì dòng chảy gradient $\alpha >0 $ liên tục qua mọi trạng thái đầu vào.
+\end{itemize}
+
+% d.Sự Tương tác Giữa Đạo hàm Activation và Chuẩn Trọng số
+\textbf{d.Sự Tương tác Giữa Đạo hàm Activation và Chuẩn Trọng số}: Độ lớn tổng thể của ma trận Jacobian từng lớp $J_l = \frac{\partial x+{l+1}}{\partial x_l}$ chịu ảnh hưởng bởi tích giữa chuẩn đạo hàm activation và chuẩn ma trận trọng số:
+\begin{equation}
+    \|J_l\|_2 = \|\text{diag}(d_l) W_l\|_2 \le \|\text{diag}(d_l)\|_2 \|W_l\|_2 \le r \|W_l\|_2
+\end{equation}
+
+\begin{itemize}
+    \item Nếu $r \|W_l\|_2 < 1$, ma trận $J_l$ là toán tử co, dẫn đến vanishing gradient khi chuỗi tích $\prod_{l=1}^{L-1} J_l$ tiến về $0$.
+    \item Nếu $r \|W_l\|_2 > 1$, tích ma trận có nguy cơ bùng nổ gradient (exploding gradient).
+    \item Để đạt trạng thái cân bằng \textit{Dynamical Isometry} ($\|J_l\|_2 \approx 1$), việc lựa chọn hàm kích hoạt có $r = 1$ (như Tanh hoặc ReLU) phải đi kèm với các kỹ thuật khởi tạo trọng số phù hợp (như Xavier/Kaiming Initialization) để đảm bảo $\|W_l\|_2 \approx 1$.
 \end{itemize}
 
 \subsection{Khởi tạo và độ lớn của weight}
