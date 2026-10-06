@@ -18,10 +18,17 @@
 \usepackage{caption}
 \usepackage{subcaption}
 \usepackage{float}
-\usepackage{amsmath,amssymb,amsfonts}
+\usepackage{amsmath,amssymb,amsfonts,amsthm}
 \usepackage{graphicx}
 \usepackage{adjustbox}
 \usepackage{multicol}
+
+\newtheorem{theorem}{Định lý}
+\newtheorem{lemma}{Bổ đề}
+\newtheorem{proposition}{Mệnh đề}
+\newtheorem{corollary}{Hệ quả}
+\newtheorem{definition}{Định nghĩa}
+\newtheorem{remark}{Nhận xét}
 \usepackage[inline,shortlabels]{enumitem}
 \usepackage{setspace}
 \usepackage{longtable}
@@ -757,7 +764,6 @@ Loss giảm chậm chưa chắc do vanishing gradient. Cần loại trừ các n
 
 \section{Cơ chế Vanishing Gradient trong Backpropagation}
 Xét một mạng Perceptron đa lớp (MLP) gồm $L$ lớp (độ sâu $L$). Quá trình lan truyền tiến (foward pass) biến đổi vector đầu vào $x_0 \in \mathbb{R}^{N_0}$ thành vector đầu ra $x_L \in \mathbb{R}^{N_L}$ thông qua chuỗi của các lớp ẩn:
-
 \begin{align}
     y_l &= W_l x_l + b_l, \quad l = 0, 1, \dots, L-1 \\
     x_{l+1} &= \sigma(y_l), \quad l = 0, 1, \dots, L-1
@@ -768,7 +774,7 @@ Giả sử hàm mất mát trên một mẫy dữ liệu là $\mathcal{l}(y, x_l
 \begin{equation}
     \frac{\partial \mathcal{l}}{\partial W_s} = \left[ \text{diag}(d_s) B_s \right] \otimes x_s^T
 \end{equation}
-trong đó:
+Trong đó:
 \begin{itemize}
     \item $d_x = \sigma'(y_s) \in \mathbb{R}^{N_{s+1}}$ là vector đạo hàm của hàm kích hoạt tại lớp $s$
     \item $\text {diag}(d_s)$ là ma trận đường chéo kích thước $N_{s+1} \times N_{s+1}$ chứa các phần tử của $d_s$.
@@ -778,15 +784,149 @@ trong đó:
         B_s(E)= \left( \frac{\partial x_l}{\partial x_{s+1}} \right)^T E
     \end{equation}
 \end{itemize}
+
+% a. Bản chất Toán học của Hiện tượng Vanishing Gradient
+\textbf{a. Bản chất Toán học của Hiện tượng Vanishing Gradient}\\
+
 Ma trận Jacobian chuyển tiếp giữa hai lớp liên tiếp $l$ và $l+1$ có dạng:
 \begin{equation}
     \frac{\partial x_{l+1}}{\partial x_l} = \text{diag}(d_l) W_l
 \end{equation}
-Do đó, ma trận Jacobian Đầu vào - Đầu ra (Input - Output Jacobian - IOJ)
-$\frac{\partial x_L}{\partial x_{S+1}}$ biểu diễn sự lan truyền đạo hàm qua $L-s-1$ lớp:
+Do đó, ma trận Jacobian Đầu vào - Đầu ra (Input - Output Jacobian - IOJ) $\frac{\partial x_L}{\partial x_{S+1}}$ biểu diễn sự lan truyền đạo hàm qua $L-s-1$ lớp:
 \begin{equation}
     \frac{\partial x_l}{\partial x_{s+1}} = \frac{\partial x_L}{\partial x_{L-1}} \frac{\partial x_{L-1}}{\partial x_{L-2}} \dots \frac{\partial x_{s+2}}{\partial x_{s+1}} = \prod_{l=s+1}^{L-1} \text{diag}(d_l) W_l
 \end{equation}
+
+\textbf{Sự Suy giảm lũy thừa của Tích Ma trận:} Ma trận IOJ toàn cục của mạng $\frac{\partial x_L}{\partial x_1}$ là tích của $L-1$ ma trận:
+\begin{equation}
+    \frac{\partial x_L}{\partial x_1} = \prod_{l=1}^{L-1} \text{diag}(d_l) W_l
+\end{equation}
+Giả sử hàm kích hoạt $\sigma(\cdot)$ có đạo hàm bị chặn trên bởi $r > 0$ (ví dụ: $r = 0.25$ đối với Sigmoid, $r = 1$ đối với Tanh/ReLU). Đặt $\Omega_{\max} = \max_{l} \|W_l\|_2$. Theo tính chất sub-multiplicative của chuẩn ma trận:
+\begin{equation}
+\left\| \frac{\partial x_L}{\partial x_1} \right\|_2 \le \prod_{l=1}^{L-1} \|\text{diag}(d_l)\|_2 \|W_l\|_2 \le \left( r \Omega_{\max} \right)^{L-1}
+\end{equation}
+
+\paragraph{Hậu quả:} Khi $r \Omega_{\max} <1$, chuẩn của ma trận IOJ suy giảm theo hàm mũ $\mathcal{O}\left((r \Omega_{\max})^L\right)$ và chiều sâu $L \to \infty$:
+\begin{equation}
+    \lim_{L \to \infty} \frac{\partial \mathcal{L}}{\partial W_s} = 0 \quad(\text{với các lớp} s \ll L)
+\end{equation}
+Hiện tượng này khiến cho tín hiệu lỗi $E$ bị triệt tiêu hoàn toàn trước khi tới được các lớp đầu tiên, khiến các trọng số ở xa đầu ra bị "đóng băng" (gradient immobility).
+
+% b. Phân tích theo Lý thuyết Hệ Động lực \& Định lý Furstenberg-Kifer
+\textbf{b. Phân tích theo Lý thuyết Hệ Động lực \& Định lý Furstenberg-Kifer}
+
+\textbf{Chuyển đổi DNN sang Hệ Động lực Thời gian Rời rạc} \\
+Coi một mạng nơ-ron sâu gồm chuỗi $N$ khối là một hệ động lực phi tuyến rời rạc. Cho các tham số $\omega_n \in \mathbb{R}^s$ là i.i.d. với phân bố $\nu \in \mathcal{P}(\mathbb{R}^s)$. Chuỗi trạng thái được định nghĩa:
+\begin{equation}
+x_{n+1} = f_{\omega_n}(x_n), \quad n \ge 0
+\end{equation}
+Sự lan truyền tiến của vector đầu vào $x_0$ tương ứng với quỹ đạo $x_N = f_{\omega_N} \circ f_{\omega_{N-1}} \circ \dots \circ f_{\omega_0}(x_0)$.
+Sự tiến hóa của nhiễu loạn tuyến tính $\varepsilon_0 \in \mathbb{R}^d$ qua các lớp tuân theo động lực không dừng:
+\begin{equation}
+\varepsilon_N = D_N(\omega_N)(x_N) \varepsilon_0 = \left( \prod_{m=0}^N D(\omega_{N-m})(x_{N-m}) \right) \varepsilon_0
+\end{equation}
+với $D(\omega)(x)$ là ma trận Jacobian $d \times d$ của $f_\omega$ tại điểm $x$. Khi $x_n \to x^*$ (điểm cố định định mệnh), các ma trận $D(\omega_n)(x^*)$ trở thành chuỗi ma trận ngẫu nhiên độc lập cùng phân bố (i.i.d.) có quy luật $\mu \in \mathcal{P}(M)$.
+
+\textbf{Định lý Furstenberg-Kifer và Phổ Số mũ Lyapunov} \\
+Xét không gian xạ ảnh $\mathbb{P}^{d-1}$ (tập các đường thẳng đi qua gốc tọa độ trong $\mathbb{R}^d$). Định nghĩa hạt nhân chuyển tiếp Markov $\phi: \mathbb{P}^{d-1} \to \mathcal{P}(\mathbb{P}^{d-1})$:
+\begin{equation}
+\int_{\mathbb{P}^{d-1}} f(y) \phi(dy|x) = \int_{M} f\left( \frac{A x}{\|A x\|} \right) \mu(dA)
+\end{equation}
+Tập các độ đo dừng $\mathcal{S} = \{ \varrho \in \mathcal{P}(\mathbb{P}^{d-1}) : \mu \ast \varrho = \varrho \}$ là một hình simplex lồi compact không rỗng.
+
+\begin{theorem}[Furstenberg-Kifer]
+Tồn tại dãy các không gian con $\mathbb{R}^d = L_0 \supset L_1 \supset L_2 \dots \supset L_r \supset \{0\}$ và chuỗi các số thực $\lambda_0(\mu) > \lambda_1(\mu) > \dots > \lambda_r(\mu)$ sao cho với $v \in L_i \setminus L_{i+1}$:
+\begin{equation}
+    \lim_{N \to \infty} \frac{1}{N} \log \|X_N X_{N-1} \dots X_1 v\| = \lambda_i(\mu) \quad \text{a.s.}
+\end{equation}
+Giá trị của các số mũ Lyapunov $\lambda_i(\mu)$ được xác định bởi:
+\begin{equation}
+    \lambda(\mu, \varrho) = \int_{M} \int_{\mathbb{P}^{d-1}} \log \|A u\| \mu(dA) \varrho(du)
+\end{equation}
+khi $\varrho$ biến thiên trên tập độ đo dừng $\mathcal{S}$.
+\end{theorem}
+
+\textbf{Tác động ổn định của Kết nối Dư (ResNet):}
+Khối kết nối dư biến đổi ánh xạ $x \mapsto f_\omega(x)$ thành $x \mapsto x + f_\omega(x)$, tương ứng với việc thay thế ma trận $A$ bằng $I + A$.
+
+\begin{theorem}[Borkar, 2025]
+Phổ số mũ Lyapunov dưới tác động của kết nối dư là một nhiễu loạn nhỏ hơn về phía phổ của ma trận đơn vị $I$ (vector toàn số 1) so với khi không có kết nối dư.
+\end{theorem}
+\textbf{Tóm tắt chứng minh:}
+Xét các vector $\hat{u}_0 = \hat{u}$, $\hat{u}_1 = A \hat{u}$, và $\hat{u}_2 = (I + A)\hat{u} = \hat{u}_0 + \hat{u}_1$ với $\|\hat{u}\| = 1$. Vector $\hat{u}_3$ là giao điểm các đường chéo của hình bình hành tạo bởi $0, \hat{u}_0, \hat{u}_1, \hat{u}_2$. Khi chiếu lên mặt cầu $S^d$ và không gian xạ ảnh $\mathbb{P}^{d-1}$, khoảng cách metric giữa $\pi(\hat{u}_3)$ và $\pi(\hat{u}_0)$ nhỏ hơn khoảng cách giữa $\pi(\hat{u}_1)$ và $\pi(\hat{u}_0)$.Điều này dẫn đến:
+\begin{equation}
+\int_{\mathbb{P}^{d-1}} \int_{M} \log \|(I+A)u\| \mu(dA) \varrho(du) - \int_{\mathbb{P}^{d-1}} \int_{M} \log \|Au\| \mu(dA) \varrho(du) < 0
+\end{equation}
+Kết quả này chứng minh rằng kết nối dư kéo các số mũ Lyapunov tiệm cận về 0 (tương ứng chuẩn bằng 1), triệt tiêu sự bùng nổ hoặc suy giảm theo hàm mũ.
+
+
+% c. Giải pháp Bộ lọc Cộng Đẳng hướng Ngẫu nhiên (roaFNN \& roaRNN)
+\textbf{c. Giải pháp Bộ lọc Cộng Đẳng hướng Ngẫu nhiên (roaFNN \& roaRNN)}
+
+\textbf{Kiến trúc roaFNN và Động lực học Tích số}\\
+Mô hình roaFNN thiết lập một tổ hợp lồi giữa biến đổi phi tuyến tiêu chuẩn và ma trận bán đẳng hướng ngẫu nhiên $O_l$:
+\begin{equation}
+x_{l+1} = \alpha \sigma(W_l x_l + b_l) + (1-\alpha) O_l x_l, \quad l = 0, \dots, L-1
+\end{equation}
+trong đó $O_l \in \mathbb{R}^{N_{l+1} \times N_l}$ thỏa mãn $O_l^T O_l = I_{N_l}$ (nếu $N_l \le N_{l+1}$) hoặc $O_l O_l^T = I_{N_{l+1}}$ (nếu $N_l \ge N_{l+1}$). Ma trận Jacobian từng lớp trở thành:
+\begin{equation}
+\frac{\partial x_{l+1}}{\partial x_l} = \alpha \text{diag}(d_l) W_l + (1-\alpha) O_l
+\end{equation}
+
+\textbf{ Các Bổ đề Biên và Định lý Độc lập với Chiều sâu}
+
+\begin{lemma}[Biên trên từng lớp]
+Với $P_l = \frac{\partial x_L}{\partial x_l}$, ta có: $\|P_l\| \le \left[ 1 + \alpha (r \Omega_l - 1) \right] \|P_{l+1}\|$.
+\end{lemma}
+
+\begin{lemma}[Biên dưới từng lớp]
+Giả sử dãy kích thước lớp không tăng ($N_0 \ge N_1 \ge \dots \ge N_L$). Nếu $\alpha < \frac{1}{1 + r \Omega_{\max}}$, ta có: $\|P_l\| \ge \left[ 1 - \alpha (1 + r \Omega_l) \right] \|P_{l+1}\|$.
+\end{lemma}
+
+\begin{theorem}[Ceni, 2022 - Biên Jacobian độc lập với độ sâu $L$]
+Xét mô hình roaFNN với tham số hóa $\alpha = \rho (L-1)^{-1}$ ($\rho > 0$). Giá trị trị riêng lớn nhất (chuẩn) của ma trận IOJ $\frac{\partial x_L}{\partial x_1}$ luôn thỏa mãn biên trên độc lập với $L$:
+\begin{equation}
+\left\| \frac{\partial x_L}{\partial x_1} \right\|_2 \le \exp\left( \rho (r \Omega_{\max} - 1) \right)
+\end{equation}
+Đồng thời, nếu $\rho < \frac{L-1}{1 + r \Omega_{\max}}$ và kích thước các lớp không tăng, ta có biên dưới độc lập với $L$:
+\begin{equation}
+\exp\left( -\rho (1 + r \Omega_{\max}) \right) \le \left\| \frac{\partial x_L}{\partial x_1} \right\|_2
+\end{equation}
+\end{theorem}
+
+\textbf{Nhận xét:} Khi $L \to \infty$, cả hai biên trên và biên dưới đều hội tụ về các hằng số dương hữu hạn hoàn toàn không phụ thuộc vào độ sâu $L$. Điều này chứng minh toán học rằng roaFNN triệt tiêu hoàn toàn hiện tượng Vanishing Gradient lẫn Exploding Gradient mà không cần Batch Normalization hay Gradient Clipping.
+
+% d. Mở rộng cho Mạng Hồi quy (roaRNN) \& Mô hình Thời gian Liên tục
+\textbf{d. Mở rộng cho Mạng Hồi quy (roaRNN) \& Mô hình Thời gian Liên tục}
+Mô hình roaRNN áp dụng ma trận đẳng hướng $O$ dùng chung qua các bước thời gian $k$:
+\begin{equation}
+x_{k+1} = \alpha \sigma(W_h x_k + b_h + W_i u_{k+1}) + (1-\alpha) O x_k
+\end{equation}
+Trong góc nhìn thời gian liên tục, roaRNN chính là dạng xấp xỉ Euler hiện của phương trình vi phân thông thường (ODE):
+\begin{equation}
+\tau \dot{x} = A x + \sigma(W_h x + b_h + W_i u)
+\end{equation}
+với hằng số thời gian $\tau = \rho^{-1}$ và ma trận ma sát/dẫn dắt $A = \alpha^{-1} \left[ (1-\alpha)O - I \right]$.
+
+\textbf{Bảng So sánh Tổng hợp các Phương pháp Ổn định Đạo hàm}
+
+\begin{table}[h]
+\centering
+\small
+\begin{tabular}{p{3.5cm}p{3.5cm}p{4cm}p{4cm}}
+\toprule
+\textbf{Phương pháp} & \textbf{Biểu diễn Toán học} & \textbf{Cơ chế Động lực học} & \textbf{Giới hạn / Nhược điểm} \\
+\midrule
+\textbf{Vanilla MLP / RNN} & $x_{l+1} = \sigma(W_l x_l + b_l)$ & Tích Jacobian $\prod \text{diag}(d_l)W_l$ suy giảm/bùng nổ lũy thừa & Bị triệt tiêu đạo hàm nghiêm trọng khi $L > 20$ hoặc $T > 100$. \\
+\addlinespace
+\textbf{ResNet} & $x_{l+1} = x_l + f_\omega(x_l)$ & Thu hẹp phổ Lyapunov quanh $I$ ($A \mapsto I + A$) & Vẫn phụ thuộc vào Batch Normalization ở độ sâu cực lớn. \\
+\addlinespace
+\textbf{roaFNN / roaRNN} & $x_{l+1} = \alpha \sigma(\cdot) + (1-\alpha)O_l x_l$ & Chặn phổ giá trị đơn độc lập độ sâu $L$ qua $\alpha = \frac{\rho}{L-1}$ & Chi phí bộ nhớ tăng nhẹ do lưu trữ ma trận $O_l$. \\
+\bottomrule
+\end{tabular}
+\caption{So sánh đặc tính toán học của các kiến trúc mạng nơ-ron sâu.}
+\end{table}
+
 
 \subsection{Chain rule trong mạng nhiều lớp}
 Với mạng sâu, gradient tại một lớp sớm là tích của nhiều đạo hàm cục bộ:
@@ -810,12 +950,83 @@ Phân tích cách $f'(z)$ và phổ của ma trận trọng số cùng quyết �
 \section{Các yếu tố gây Vanishing Gradient}
 
 \subsection{Hàm activation}
-\textit{Người phụ trách: Khanh}
+% \textit{Người phụ trách: Khanh}
+% \begin{itemize}
+%     \item Sigmoid và tanh có vùng bão hòa với đạo hàm rất nhỏ.
+%     \item Sigmoid có đạo hàm cực đại chỉ bằng $0.25$.
+%     \item So sánh với ReLU và các biến thể để làm rõ ảnh hưởng của activation.
+% \end{itemize}
+Trong ma trận Jacobian từng lớp $\frac{\partial x_{l+1}}{\partial x_l} = \text{diag}(d_l) W_l$, ma trận đường chéo $\text{diag}(d_l)$ chứa đạo hàm của hàm kích hoat $d_l = \sigma'(y_l)$ đóng vai trò là hệ số điều tiết biên độ gradient khi truyền qua mội lớp.
+
+Giả sử đạo hàm của hàm kích hoạt bị chặn trên bởi hằng số $r > 0$:
+\begin{equation}
+    r = \sup_{y \in \mathbb{R}} |\sigma'(y)| \implies \|\text{diag} (d_l)\|_2 \le r
+\end{equation}
+
+Nếu $r < 1$, ma trận $\text{diag}(d_l)$ đóng vai trò là một toán tử thu nhỏ )contraction operator), trực tiếp làm suy giảm biên độ tín hiệu lỗi qua từng lop81 lan truyền ngược.
+
+% a.Hàm Sigmoid (Logistic Function)
+\textbf{a. Hàm Sigmoid (Logistic Function)}
+\begin{equation}
+\sigma(y) = \frac{1}{1 + e^{-y}}
+\end{equation}
+Đạo hàm cấp một của hàm Sigmoid có dạng:
+\begin{equation}
+ \sigma'(y) = \sigma(y)\left(1 - \sigma(y)\right)
+\end{equation}
 
 \begin{itemize}
-    \item Sigmoid và tanh có vùng bão hòa với đạo hàm rất nhỏ.
-    \item Sigmoid có đạo hàm cực đại chỉ bằng $0.25$.
-    \item So sánh với ReLU và các biến thể để làm rõ ảnh hưởng của activation.
+    \item \textbf{Giá trị cực đại:} $sigma'(y)$ đạt giá trị lớn nhất tại $y = 0$ với $r = \max_y \sigma'(y) = 0.25$.
+    \item \textbf{Tác động đến Gradient:}: Vì $\|\text{diag}(d_l)\|_2 \le 0.25$, ngay cả khi ma trận trọng số thỏa mãn $ \|W_l\|_2 = 1$, tín hiệu gradient khi đi qua $L-1$ lớp Sigmoid sẽ bị thu nhỏ với tốc độ ít nhất là":
+    \begin{equation}
+        \left \| \prod_{l=1}^{L-1} \text{diag}(d_l) \right\|_2 \le (0.25)^{L-1} = 4^{-(L-1)}
+    \end{equation}
+    \item \textbf{Hiện tượng Bão hòa (Saturation) :} Khi $|y| \gg 0$ (nguồn tín hiệu đầu vào lớp quá lớn hoặc quá nhỏ), $\sigma(y) \to 1$ hoặc $\sigma(y) \ to 0$, dẫn đến $\sigma(y) \to 0$, dẫn đến $\sigma'(y) \to 0$. Vùng bão hòa này khiến cho $d_l \approx 0$, lập tức triệt tiêu gradient truyền qua lớp đó.
+\end{itemize}
+
+% b. Hàm tangent Hyperbol (Tanh):
+\textbf{b. Hàm tangent Hyperbol (Tanh)}\\
+Hàm Tanh ép giá trị đầu ra về khoảng $(-1, 1)$:
+\begin{equation}
+    \sigma(y) = \tanh(y) = \frac{e^y - e^{-y}}{e^y + e^{-y}}
+\end{equation}
+\text{Đạo hàm của hàm Tanh được tính theo công thức:}
+\begin{equation}
+    \sigma'(y) = 1 - \tanh^2(y)
+\end{equation}
+
+\begin{itemize}
+    \item \textbf{Giá trị cực đại:} $r = \max_y \sigma'(y) = 1.0$ (đạt được tại $y = 0$).
+    \item \textbf{So sánh với Sigmoid:} Tanh cải thiện đáng kể so với Sigmoid vì $r = 1.0$ giúp gradient không bị thu nhỏ cưỡng bức tại vùng làm việc tuyến tính ($y \approx 0 $)
+    \item \textbf{Hạn chế bão hòa:} Tuy nhiên, khi $|y| > 2$, $\tanh^2(y) \to 1$ khiến $\sigma'(y) \to 0$. Do đó , nếu trọng số $w_l$ khiến giá trị $y_l$ rơi vào vùng bão hòa hai đầu, hiện tượng Vanishing Gradient vẫn xảy ra nghiêm trọng.
+\end{itemize}
+
+% c. Hàm Tuyến tính Từng phần (ReLU \& Leaky ReLU):
+\textbf{c. Hàm Tuyến tính Từng phần (ReLU \& Leaky ReLU)}\\
+Để khắc phục hiện tượng bão hòa đạo hàm của các hàm dạng Sigmoid và Tanh, hàm ReLu (Retified Linear Unit) được sử dụng:
+\begin{equation}
+    \sigma(y) = \max(o, y) \implies \sigma'(y) = \begin{cases} 1 & \text{nếu } y > 0 \\ 0 & \text{nếu } y \le 0 \end{cases}
+\end{equation}
+\begin{itemize}
+    \item \textbf{Ưu điểm giải quyết Vanishing Gradient:} Đối với các neuron ở trạng thai 1kích hoạt ($y > 0$), đạo hàm luôn bằng $1$ ($r = 1.0$). Điều này loại bỏ hoàn toàn hệ số thu nhỏ đạo hàm của hàm kích hoạt, giúp gradient truyền qua nhiều lop81 mà không bị suy giảm do $\sigma'(y)$.
+    \item \textbf{Vấn đề "Dying ReLU":} Khi $y \le 0$, $sigma'(y) = 0$. Nếu một neuron bị rơi vào vùng âm với trọng số cập nhật không phù hợp, nó sẽ vĩnh viễn không phát tín hiệu gradient về sau ($\text{diag}(d_l) = 0$).
+    \item \textbf{Biến thể Leaky ReLu/ Parametric ReLU:} Khắc phục điểm chế bằng cách gán một độ dốc nhỏ $\alpha \approx 0.01$ cho vùng âm:
+    \begin{equation}
+        \sigma'(y) = \begin{cases} 1 & \text{nếu } y > 0 \\  \alpha & \text{nếu } y \le 0 \end{cases}
+    \end{equation}
+    Giúp duy trì dòng chảy gradient $\alpha >0 $ liên tục qua mọi trạng thái đầu vào.
+\end{itemize}
+
+% d.Sự Tương tác Giữa Đạo hàm Activation và Chuẩn Trọng số
+\textbf{d. Sự Tương tác Giữa Đạo hàm Activation và Chuẩn Trọng số:} Độ lớn tổng thể của ma trận Jacobian từng lớp $J_l = \frac{\partial x+{l+1}}{\partial x_l}$ chịu ảnh hưởng bởi tích giữa chuẩn đạo hàm activation và chuẩn ma trận trọng số:
+\begin{equation}
+    \|J_l\|_2 = \|\text{diag}(d_l) W_l\|_2 \le \|\text{diag}(d_l)\|_2 \|W_l\|_2 \le r \|W_l\|_2
+\end{equation}
+
+\begin{itemize}
+    \item Nếu $r \|W_l\|_2 < 1$, ma trận $J_l$ là toán tử co, dẫn đến vanishing gradient khi chuỗi tích $\prod_{l=1}^{L-1} J_l$ tiến về $0$.
+    \item Nếu $r \|W_l\|_2 > 1$, tích ma trận có nguy cơ bùng nổ gradient (exploding gradient).
+    \item Để đạt trạng thái cân bằng \textit{Dynamical Isometry} ($\|J_l\|_2 \approx 1$), việc lựa chọn hàm kích hoạt có $r = 1$ (như Tanh hoặc ReLU) phải đi kèm với các kỹ thuật khởi tạo trọng số phù hợp (như Xavier/Kaiming Initialization) để đảm bảo $\|W_l\|_2 \approx 1$.
 \end{itemize}
 
 \subsection{Khởi tạo và độ lớn của weight}
@@ -1557,6 +1768,16 @@ Goodfellow, I., Bengio, Y. and Courville, A. (2016) \textit{Deep Learning}.
 Cambridge, MA: MIT Press. Available at:
 \url{https://www.deeplearningbook.org/}
 (Accessed: 30 September 2026).
+
+\bibitem{borkar2025exploding}
+V.~S. Borkar,
+\newblock ``Exploding and vanishing gradients in deep neural networks: The effect of residual connections,''
+\newblock \emph{arXiv preprint}, 2025.
+
+\bibitem{ceni2022random}
+A.~Ceni,
+\newblock ``Random orthogonal additive filters: a solution to the vanishing/exploding gradient of deep neural networks,''
+\newblock \emph{IEEE Transactions on Neural Networks and Learning Systems}, 2022.
 
 \end{thebibliography}
 
