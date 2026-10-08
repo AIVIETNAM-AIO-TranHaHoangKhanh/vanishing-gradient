@@ -1030,19 +1030,20 @@ Hàm Tanh ép giá trị đầu ra về khoảng $(-1, 1)$:
 \end{itemize}
 
 \subsection{Khởi tạo và độ lớn của weight}
+\label{subsec:weight_init}
 
-Các thuật toán tối ưu hóa dùng để huấn luyện mô hình học sâu thường mang tính lặp lại thay vì dựa trên một công thức cố định để đưa ra kết quả. Vì vậy ta cần phải đưa ra một điểm khởi tạo ban đầu để bắt đầu vòng lặp. Hơn nữa, do việc huấn luyện các mô hình học sâu có độ phức tạp cao nên hầu hết các thuật toán đều bị ảnh hưởng lớn bởi lựa chọn điểm khởi tạo.
+Huấn luyện mạng neural là một quá trình lặp: tham số được cập nhật dần từng bước, bắt đầu từ một giá trị xuất phát nào đó. Do đó, trước bước cập nhật đầu tiên, ta buộc phải chọn giá trị ban đầu cho toàn bộ trọng số. Hàm mất mát của một mạng sâu có hình dạng phức tạp và không lồi, nên kết quả huấn luyện phụ thuộc đáng kể vào lựa chọn này~\cite[\S8.4]{long-goodfellow2016}.
 
-Điểm khởi tạo ban đầu có thể quyết định khả năng hội tụ của thuật toán. Một số điểm khởi tạo không ổn định có thể dẫn đến các sự cố về mặt tính toán số học và làm cho thuật toán thất bại hoàn toàn. Ngay cả khi quá trình học có thể hội tụ, điểm khởi tạo vẫn có thể quyết định tốc độ hội tụ nhanh hay chậm, cũng như việc nó sẽ hội tụ về một điểm có loss cao hay thấp.
+Ảnh hưởng của điểm xuất phát thể hiện ở ba khía cạnh. Thứ nhất, nó quyết định quá trình huấn luyện có chạy được hay không: một số giá trị ban đầu gây ra lỗi số học và làm thuật toán thất bại ngay từ đầu. Thứ hai, nó ảnh hưởng đến tốc độ hội tụ. Thứ ba, ngay cả khi quá trình học hội tụ, nó vẫn có thể quyết định mô hình dừng ở một điểm có loss thấp hay cao~\cite[\S8.4]{long-goodfellow2016}.
 
-Mục 4.1 đã chỉ ra rằng gradient tại một lớp ở phía đầu mạng là tích của các ma trận Jacobian cục bộ:
-\[ \frac{\partial \mathcal{L}}{\partial \mathbf{h}^{(l)}} = \left( \prod_{k=l+1}^{L} \frac{\partial h^{(k)}}{\partial \mathbf{h}^{(k-1)}} \right) \frac{\partial \mathcal{L}}{\partial \mathbf{h}^{(L)}}, \qquad \frac{\partial \mathbf{h}^{(k)}}{\partial \mathbf{h}^{(k-1)}} = \operatorname{diag}\big( f'(z^{(k)}) \big) W^{(k)}. \]
-Trước khi huấn luyện, các ma trận trọng số $W^{(k)}$ được khởi tạo ngẫu nhiên, do đó độ lớn ban đầu của trọng số quyết định trực tiếp kích thước của từng thừa số trong tích này. Nó cũng quyết định $z^{(k)}$ vì $z^{(k)}$ được tính bằng cách truyền đầu vào qua tất cả các lớp ngẫu nhiên trước đó, và vì vậy nó cũng quyết định $f'(z^{(k)})$ sẽ lớn hay tiến gần về 0.
+Mục IV đã chỉ ra rằng gradient tại một lớp ở phía đầu mạng là tích của các ma trận Jacobian cục bộ:
+\[ \frac{\partial \mathcal{L}}{\partial \mathbf{h}^{(l)}} = \left( \prod_{k=l+1}^{L} \frac{\partial h^{(k)}}{\partial \mathbf{h}^{(k-1)}} \right) \frac{\partial \mathcal{L}}{\partial \mathbf{h}^{(L)}}, \qquad \frac{\partial \mathbf{h}^{(k)}}{\partial \mathbf{h}^{(k-1)}} = \operatorname{diag}\big( f'(\mathbf{z}^{(k)}) \big) W^{(k)}. \]
+Trước khi huấn luyện, các ma trận trọng số $W^{(k)}$ được khởi tạo ngẫu nhiên, do đó độ lớn ban đầu của trọng số quyết định trực tiếp kích thước của từng thừa số trong tích này. Nó cũng quyết định $\mathbf{z}^{(k)}$ vì $\mathbf{z}^{(k)}$ được tính bằng cách truyền đầu vào qua tất cả các lớp ngẫu nhiên trước đó, và vì vậy nó cũng quyết định $f'(\mathbf{z}^{(k)})$ sẽ lớn hay tiến gần về 0.
 
-Schoenholz và cộng sự (2017) cho thấy rằng trên trung bình, mỗi lớp nhân kích thước bình phương trung bình (mean squared size) của tín hiệu lan truyền ngược (backward signal) với một số hệ số khuếch đại phụ thuộc vào phương sai của trọng số và hàm kích hoạt:
+Schoenholz và cộng sự (2017) ~\cite[\S4]{long-schoenholz2017} cho thấy rằng trên trung bình, mỗi lớp nhân kích thước bình phương trung bình (mean squared size) của tín hiệu lan truyền ngược (backward signal) với một số hệ số khuếch đại phụ thuộc vào phương sai của trọng số và hàm kích hoạt:
 
-\[  \chi \;=\; n \operatorname{Var}(W)\; \mathbb{E}\big[ f'(z)^2 \big], \]
-trong đó $n$ là chiều rộng của lớp. Qua $L - l$ lớp, kích thước bình phương trung bình của gradient được nhân lên khoảng $\chi^{L - l}$, tức là độ lớn của nó được nhân lên khoảng $\chi^{(L - l)/2}$ lần. Hiện tượng xảy ra dựa vào giá trị của $\chi$:
+\[  \chi \;=\; n \operatorname{Var}(W)\; \mathbb{E}\big[ f'(\mathbf{z})^2 \big], \]
+trong đó $n$ là chiều rộng của lớp. Qua $L - l$ lớp, kích thước bình phương trung bình của gradient được nhân lên khoảng $\chi^{L - l}$, tức là độ lớn của nó được nhân lên khoảng $\chi^{(L - l)/2}$ lần. Hiện tượng xảy ra dựa vào giá trị của $\chi$ ~\cite[\S4]{long-schoenholz2017}:
 \begin{itemize}
     \item Nếu $\chi < 1$, gradient sẽ bị biến mất (gradient vanishing). Nếu chuỗi mạng đủ sâu (tức $L - l$ lớn), giá trị $\chi^{L-l}$ sẽ tiến rất nhanh về 0. Điều này làm cho gradient tại các lớp đầu tiên ($\frac{\partial \mathcal{L}}{\partial \mathbf{h}^{(l)}}$) cực kỳ nhỏ, khiến các trọng số ở các lớp này gần như không được cập nhật trong quá trình huấn luyện.
     \item Nếu $\chi = 1$, gradient được bảo toàn ổn định qua các lớp
@@ -1050,19 +1051,20 @@ trong đó $n$ là chiều rộng của lớp. Qua $L - l$ lớp, kích thước
 \end{itemize}
 Việc khởi tạo sẽ chọn $\operatorname{Var}(W)$, và do đó sẽ quyết định giá trị của $\chi$.
 
-Khi trọng số quá nhỏ, ta sẽ có $\chi < 1$ vì mỗi lớp sẽ làm thu nhỏ cả tín hiệu lan truyền tiến (forward signal) lẫn gradient lan truyền ngược. Ví dụ, với chiều rộng lớp $n = 100$ và trọng số được lấy từ phân phối $\mathcal{N}(0, 0.01^2)$, ta có $n \operatorname{Var}(W) = 10^{-2}$, do đó độ lớn của tín hiệu và gradient bị chia cho 10 ở mỗi lớp, và sau 20 lớp, nó bị nhân với $10^{-20}$. Các lớp ở sâu khi đó sẽ nhận được giá trị kích hoạt rất nhỏ gần như giống hệt nhau với mọi đầu vào (xem Mục 5.4), và các lớp ở phía trước sẽ gần như không nhận được gradient nào.
+Khi trọng số quá nhỏ, ta sẽ có $\chi < 1$ vì mỗi lớp sẽ làm thu nhỏ cả tín hiệu lan truyền tiến (forward signal) lẫn gradient lan truyền ngược. Ví dụ, với chiều rộng lớp $n = 100$ và trọng số được lấy từ phân phối $\mathcal{N}(0, 0.01^2)$, ta có $n \operatorname{Var}(W) = 10^{-2}$, do đó độ lớn của tín hiệu và gradient bị chia cho 10 ở mỗi lớp, và sau 20 lớp, nó bị nhân với $10^{-20}$. Các lớp ở sâu khi đó sẽ nhận được giá trị kích hoạt rất nhỏ gần như giống hệt nhau với mọi đầu vào (xem Mục V.4), và các lớp ở phía trước sẽ gần như không nhận được gradient nào.
 
-Ngược lại, trọng số quá lớn sẽ làm cho $|z^{(k)}|$ tăng lên và đẩy các đơn vị vào vùng bão hòa của hàm sigmoid và tanh, nơi $f'(z)$ gần bằng 0 (Mục 5.1). Một đơn vị bị bão hòa hầu như không truyền được gradient. Glorot và Bengio (2010) đã quan sát thấy hiện tượng bão hòa này ở các lớp ẩn của mạng sigmoid và tanh sâu.
+Ngược lại, trọng số quá lớn sẽ làm cho $|\mathbf{z}^{(k)}|$ tăng lên và đẩy các đơn vị vào vùng bão hòa của hàm sigmoid và tanh, nơi $f'(\mathbf{z}^{(k)})$ gần bằng 0 (Mục V.1). Một đơn vị bị bão hòa hầu như không truyền được gradient. Glorot và Bengio (2010) ~\cite{glorot2010} đã quan sát thấy hiện tượng bão hòa này ở các lớp ẩn của mạng sigmoid và tanh sâu.
 
-Tuy nhiên, hiện tượng bão hòa không phải là toàn bộ vấn đề. Các trọng số lớn cũng khuếch đại tín hiệu. Poole (2016) và Schoenholz (2017) cho thấy rằng khi phương sai của trọng số vượt qua một giá trị tới hạn (critical value), gradient trung bình sẽ tăng theo độ sâu thay vì thu nhỏ lại. Vì vậy, trọng số quá lớn không chỉ gây bão hòa các unit làm mất gradient, mà còn làm mất ổn định hệ thống và có thể khiến gradient bùng nổ.
+Tuy nhiên, hiện tượng bão hòa không phải là toàn bộ vấn đề. Các trọng số lớn cũng khuếch đại tín hiệu. Poole (2016)~\cite{poole2016} và Schoenholz (2017) ~\cite{long-schoenholz2017} cho thấy rằng khi phương sai của trọng số vượt qua một giá trị tới hạn (critical value), gradient trung bình sẽ tăng theo độ sâu thay vì thu nhỏ lại. Vì vậy, trọng số quá lớn không chỉ gây bão hòa các unit làm mất gradient, mà còn làm mất ổn định hệ thống và có thể khiến gradient bùng nổ.
 
-Hai quy tắc khởi tạo tiêu chuẩn của Xavier và He chọn $\operatorname{Var}(W)$ sao cho $\chi$ xấp xỉ $1$. Chúng sẽ được thảo luận chi tiết trong Mục 7.2.
+Hai quy tắc khởi tạo tiêu chuẩn của Xavier ~\cite{glorot2010} và He ~\cite{he2015rectifiers} chọn $\operatorname{Var}(W)$ sao cho $\chi$ xấp xỉ $1$. Chúng sẽ được thảo luận chi tiết trong Mục \ref{subsec:fix-weightinit-normalization}.
 
-Chúng ta cần lưu ý rằng việc khởi tạo chỉ đảm bảo một điểm bắt đầu tốt. Các phân tích kể trên đều dựa trên giả định rằng các lớp có chiều rộng lớn, các trọng số độc lập với nhau, và nó chỉ mô tả hành vi trung bình tại bước huấn luyện đầu tiên. Đối với các mạng có chiều rộng hữu hạn, Hanin (2018) đã chỉ ra rằng độ biến thiên của gradient giữa các lần khởi tạo ngẫu nhiên sẽ tăng theo tổng các nghịch đảo chiều rộng của các lớp; do đó, một mạng sâu và hẹp vẫn có thể gặp phải hiện tượng triệt tiêu hoặc bùng nổ gradient (Mục 5.3). Chuẩn hóa theo lô (Batch normalization) và các kết nối tắt (residual connections) giúp quá trình huấn luyện ít bị nhạy cảm hơn đối với quy mô khởi tạo ban đầu. Hai phương pháp này sẽ được trình bày ở Mục 7.2 và 7.3.
+Chúng ta cần lưu ý rằng việc khởi tạo chỉ đảm bảo một điểm bắt đầu tốt. Các phân tích kể trên đều dựa trên giả định rằng các lớp có chiều rộng lớn, các trọng số độc lập với nhau, và nó chỉ mô tả hành vi trung bình tại bước huấn luyện đầu tiên. Đối với các mạng có chiều rộng hữu hạn, Hanin (2018) ~\cite{hanin2018} đã chỉ ra rằng độ biến thiên của gradient giữa các lần khởi tạo ngẫu nhiên sẽ tăng theo tổng các nghịch đảo chiều rộng của các lớp; do đó, một mạng sâu và hẹp vẫn có thể gặp phải hiện tượng triệt tiêu hoặc bùng nổ gradient (Mục \ref{subsec:depth}). Chuẩn hóa theo lô (Batch normalization) và các kết nối tắt (residual connections) giúp quá trình huấn luyện ít bị nhạy cảm hơn đối với quy mô khởi tạo ban đầu. Hai phương pháp này sẽ được trình bày ở Mục \ref{subsec:fix-weightinit-normalization} và VII.3.
 
 \subsection{Độ sâu của mạng}
+\label{subsec:depth}
 
-Mục 4.1 đã viết gradient tại lớp $l$ dưới dạng:
+Mục IV.1 đã viết gradient tại lớp $l$ dưới dạng:
 \[
 \frac{\partial \mathcal{L}}{\partial \mathbf{h}^{(l)}}
 = \left( \prod_{k=l+1}^{L} \frac{\partial \mathbf{h}^{(k)}}{\partial \mathbf{h}^{(k-1)}} \right) \frac{\partial \mathcal{L}}{\partial \mathbf{h}^{(L)}}.
@@ -1074,13 +1076,13 @@ Nếu kích thước của mỗi nhân tử đều nhỏ hơn 1, tích này sẽ
 \[
 \left\| \frac{\partial \mathcal{L}}{\partial \mathbf{h}^{(l)}} \right\| \;\le\; \gamma^{\,L-l}\, \left\| \frac{\partial \mathcal{L}}{\partial \mathbf{h}^{(L)}} \right\| .
 \]
-Độ sâu chính là số mũ trong chặn trên này. Một hệ số $\gamma = 0.9$ trên mỗi lớp là vô hại đối với một mạng nông (ví dụ: $0.9^{10} \approx 0.35$), nhưng nó lại rất nghiêm trọng với một mạng sâu (ví dụ: $0.9^{100} = 3 \times 10^5$). Lập luận tương tự theo chiều ngược lại sẽ giải thích hiện tượng bùng nổ gradient (ví dụ: $1.1^{10} \approx 2.6$ và $1.1^{100} \approx 1.4 \times 10^4$). Ví dụ về hàm sigmoid ở Mục 4.4, nơi mỗi nhân tử tối đa là 0.25, là trường hợp cực đoan của chặn trên này.
+Độ sâu chính là số mũ trong chặn trên này. Một hệ số $\gamma = 0.9$ trên mỗi lớp là vô hại đối với một mạng nông (ví dụ: $0.9^{10} \approx 0.35$), nhưng nó lại rất nghiêm trọng với một mạng sâu (ví dụ: $0.9^{100}\approx 2.7\times10^{-5}$). Lập luận tương tự theo chiều ngược lại sẽ giải thích hiện tượng bùng nổ gradient (ví dụ: $1.1^{10} \approx 2.6$ và $1.1^{100} \approx 1.4 \times 10^4$). Ví dụ về hàm sigmoid ở Mục IV.4, nơi mỗi nhân tử tối đa là 0.25, là trường hợp cực đoan của chặn trên này.
 
-Mục 5.2 đã chỉ ra rằng, trên trung bình, mỗi lớp sẽ scale gradient theo một số hệ số khuếch đại $\chi = n \operatorname{Var}(W) \mathbb{E}[f'(z)^2]$, do đó
+Mục V.2 đã chỉ ra rằng, trên trung bình, mỗi lớp sẽ scale gradient theo một số hệ số khuếch đại $\chi = n \operatorname{Var}(W) \mathbb{E}[f'(z)^2]$, do đó
 \[
 \left\| \frac{\partial \mathcal{L}}{\partial \mathbf{h}^{(l)}} \right\| \;\sim\; \chi^{(L-l)/2}.
 \]
-Hệ số khuếch đại $\chi$ không phụ thuộc vào độ sâu; độ sâu chỉ quyết định hệ số này được áp dụng bao nhiêu lần. Chính vì thế, một hệ số khuếch đại chỉ nhỏ hơn 1 một chút là vô hại trong một mạng nông nhưng lại gây hại trong một mạng sâu. Schoenholz và cộng sự (2017) đã cho thấy rằng các mạng sâu chỉ có thể huấn luyện được khi việc khởi tạo ở rất gần điểm tới hạn $\chi = 1$, và khởi tạo càng gần điểm này thì mạng càng có thể xây dựng sâu hơn.
+Hệ số khuếch đại $\chi$ không phụ thuộc vào độ sâu; độ sâu chỉ quyết định hệ số này được áp dụng bao nhiêu lần. Chính vì thế, một hệ số khuếch đại chỉ nhỏ hơn 1 một chút là vô hại trong một mạng nông nhưng lại gây hại trong một mạng sâu. Schoenholz và cộng sự (2017) ~\cite{long-schoenholz2017} đã cho thấy rằng các mạng sâu chỉ có thể huấn luyện được khi việc khởi tạo ở rất gần điểm tới hạn $\chi = 1$, và khởi tạo càng gần điểm này thì mạng càng có thể xây dựng sâu hơn.
 
 \subsection{Sự suy giảm tín hiệu trong Forward Pass}
 \label{sec:long-forward}
@@ -1650,9 +1652,83 @@ Mỗi ví dụ nên gồm: mục tiêu, kiến trúc, cấu hình huấn luyện
 ReLU, Leaky ReLU, ELU/GELU và lưu ý về \textit{dying ReLU}.
 
 \subsection{Khởi tạo trọng số và chuẩn hóa}
-\textit{Phụ trách: Khoa}
+\label{subsec:fix-weightinit-normalization}
+% \textit{Phụ trách: Khoa}
 
-Xavier/Glorot, He initialization, Batch Normalization và Layer Normalization.
+% Xavier/Glorot, He initialization, Batch Normalization và Layer Normalization.
+
+Mục V.2 đã chỉ ra rằng gradient sẽ bị triệt tiêu khi hệ số khuếch đại $\chi$ nhỏ hơn 1. Các quy tắc Xavier/Glorot và He lựa chọn $\operatorname{Var}(W)$ sao cho $\chi \approx 1$. 
+
+\subsubsection{Khởi tạo Xavier/Glorot}
+Theo Glorot và Bengio (2010)~\cite{glorot2010}, đối với một hàm kích hoạt gần như tuyến tính quanh $0$, phương sai của tín hiệu lan truyền thuận và của sai số lan truyền ngược thay đổi qua từng lớp theo công thức:
+\begin{align*}
+    \operatorname{Var}\big( \mathbf{z}^{(k)} \big) 
+& = n_{\text{in}} \operatorname{Var}(W)\, \operatorname{Var}\big( \mathbf{z}^{(k-1)} \big), \\
+\operatorname{Var}\big( \boldsymbol\delta^{(k-1)} \big)&  = n_{\text{out}} \operatorname{Var}(W)\, \operatorname{Var}\big( \boldsymbol \delta^{(k)} \big).
+\end{align*}
+Để giữ phương sai lan truyền thuận không đổi, ta cần $n_{\text{in}} \operatorname{Var}(W) = 1$, và để giữ phương sai lan truyền ngược không đổi, ta cần $n_{\text{out}} \operatorname{Var}(W) = 1$. Hai điều kiện chỉ đồng thời thỏa mãn khi $n_{\text{in}} =n_{\text{out}}$, vì vậy bài báo sử dụng một lựa chọn dung hòa
+\[ n_{\text{avg}} = \frac{n_{\text{in}} + n_{\text{out}}}{2}\]
+Từ đây ta có \textit{khởi tạo Xavier/Glorot}:
+\begin{itemize}
+    \item Trọng số được khởi tạo từ một phân phối chuẩn với kỳ vọng 0 và phương sai $\sigma^2 = \dfrac{1}{n_{\text{avg}}}$.
+
+    \item Trọng số được khởi tạo từ một phân phối đều trên đoạn từ $-r$ đến $r$, với $r = \sqrt{\dfrac{3}{n_{\text{avg}}}}$
+\end{itemize}
+và được sử dụng khi hàm kích hoạt là sigmoid hoặc tanh.
+
+\subsubsection{Khởi tạo He/Kaiming}
+
+Theo He và cộng sự (2015)~\cite{he2015rectifiers}, hàm ReLU đưa một nửa số giá trị tiền kích hoạt (pre-activation) về 0, và điều này bổ sung một hệ số $\frac{1}{2}$ vào công thức lan truyền tiến:
+\[
+\operatorname{Var}\big( \mathbf{z}^{(k)} \big) = \tfrac{1}{2}\, n_{\text{in}} \operatorname{Var}(W)\, \operatorname{Var}\big( \mathbf{z}^{(k-1)} \big)
+\quad\Longrightarrow\quad
+\operatorname{Var}(W) = \frac{2}{n_{\text{in}}},
+\]
+Từ đây ta có \textit{khởi tạo He/Kaiming:}
+\begin{itemize}
+    \item Trọng số được khởi tạo từ một phân phối chuẩn với kỳ vọng 0 và phương sai $\sigma^2 = \dfrac{2}{n_{\text{in}}}$.
+\end{itemize}
+và được sử dụng cho hàm ReLU và các biến thể của nó (Leaky ReLU, ELU, ...). He và cộng sự (2015)~\cite{he2015rectifiers} đã báo cáo rằng quy tắc này giúp huấn luyện từ đầu các mô hình kích hoạt ReLU cực kỳ sâu.
+
+Với một trong hai quy tắc Xavier và He, độ lớn của các giá trị kích hoạt và gradient không bị thu nhỏ cũng như không bị phóng đại qua từng lớp tại thời điểm khởi tạo. Tích của các ma trận Jacobian tại Mục IV.1 khi đó không còn giảm dần theo số lượng lớp, ít nhất là tại thời điểm bắt đầu huấn luyện.
+
+Tuy nhiên, hai quy tắc này chỉ khắc phục điểm khởi đầu vì chúng giả định các lớp có chiều rộng lớn và trọng số độc lập, và chỉ mô tả hành vi trung bình, và các trọng số sẽ thay đổi khi quá trình huấn luyện bắt đầu. Trong khi đó, chuẩn hóa (normalization) phát huy tác dụng xuyên suốt quá trình huấn luyện.
+
+\subsubsection{Batch Normalization (Chuẩn hóa theo lô)}
+
+Batch normalization chuẩn hóa từng giá trị trước kích hoạt (pre-activation) trên toàn bộ lô nhỏ (mini-batch) $B$, và được áp dụng ngay trước hoặc ngay sau hàm kích hoạt. Giải thuật Batch Normalization~\cite{ioffe2015batchnorm} gồm 4 bước áp dụng cho mỗi batch $B$:
+\begin{enumerate}
+    \item Tính trung bình của batch:
+    \[ \boldsymbol\mu_B = \frac{1}{m_B} \sum_{i = 1}^{m_B} \mathbf{x}^{(i)}\]
+
+    \item Tính phương sai của batch:
+    \[ \boldsymbol\sigma^2_B = \frac{1}{m_B} \sum_{i = 1}^{m_B} \left(\mathbf{x}^{(i)} - \boldsymbol\mu_B \right)^2\]
+
+    \item Chuẩn hóa
+    \[ \hat{\mathbf{x}}^{(i)} = \frac{\mathbf{x}^{(i)} - \boldsymbol \mu_B}{\sqrt{\boldsymbol\sigma_B^2 + \varepsilon}}\]
+
+    \item Scale và dịch chuyển
+    \[ \mathbf{z}^{(i)} = \boldsymbol\gamma \otimes \hat{\mathbf{x}}^{(i)} + \boldsymbol\beta\]
+\end{enumerate}
+trong đó $\boldsymbol\mu_B$ và $\boldsymbol\sigma^2_B$ lần lượt là trung bình và phương sai của $\mathbf{x}_i$ trên toàn lô, $\varepsilon$ là một hằng số nhỏ để tránh chia cho 0, còn $\boldsymbol\gamma$ và $\boldsymbol\beta$ là các tham số có thể học được. Tại thời gian kiểm thử, giá trị trung bình động của $\boldsymbol\mu_B$ và $\boldsymbol \sigma_B^2$ sẽ được sử dụng. 
+
+Ioffe và Szegedy (2015)~\cite{ioffe2015batchnorm} nhận thấy rằng batch normalization đã cải thiện đáng kể hiểu quả của \textit{mọi} mạng sâu mà họ thử nghiệm, với mức cải thiện rất lớn trên bộ chuẩn ImageNet. Bài báo liệt kê những tác động sau:
+\begin{itemize}
+    \item BN giảm đáng kể hiện tượng gradient biến mất. Họ có thể sử dụng các hàm kích hoạt bão hòa như $\tanh$ và thậm chí sigmoid, những hàm trước đó được xem là gần như không thể sử dụng hiệu quả trong các mạng sâu.
+    \item BN giảm đáng kể độ nhạy đối với khởi tạo trọng số. Phép chuẩn hóa tái căn giữa và tái điều chỉnh tỷ lệ của các tín hiệu ở mỗi lớp, nhờ đó một quy mô khởi tạo không phù hợp có thể được điều chỉnh. 
+    \item BN cho phép sử dụng tốc độ học lớn hơn nhiều, từ đó tăng đáng kể tốc độ học.
+    \item BN giảm đáng kể số bước huấn luyện cần thiết. Trong bài báo, một mô hình phân loại hình ảnh tiên tiến nhất đã đạt cùng mức độ chính xác chỉ với số bước huấn luyện ít hơn 14 lần, và sau đó vượt xa mô hình gốc một khoảng cách lớn.
+\end{itemize}
+
+Tuy nhiên, các giá trị thống kê phụ thuộc vào lô dữ liệu, vì vậy các lô quá nhỏ sẽ tạo ra các ước lượng nhiễu, đồng thời cách tính toán lúc huấn luyện và lúc kiểm thử là khác nhau. Phương pháp này cũng khó áp dụng cho các mạng hồi quy (recurrent networks). Ngoài ra, Yang và cộng sự (2019)~\cite{yang2019} chứng minh rằng trong các mạng sâu có áp dụng BN nhưng không có residual connections, gradient có thể tăng theo mũ dựa trên chiều sâu mạng tại thời điểm khởi tạo, và điều này không thể khắc phục bằng cách thay đổi phương sai trọng số ban đầu hay hàm kích hoạt. Do đó, chuẩn hóa không thể thay thế cho việc thiết kế kiến trúc mạng tốt (Mục VII.3).
+
+\subsubsection{Layer Normalization (Chuẩn hóa theo lớp)}
+
+Layer Normalization, được đề xuất bởi Ba và cộng sự (2016)~\cite{ba2016layernorm}, tính toán các giá trị thống kê trên $n$ đơn vị của một lớp cho một mẫu dữ liệu đơn lẻ. Với một mẫu dữ liệu $\mathbf{x}$ có $n$ đặc trưng, ta tính
+\[ \mu = \frac{1}{n}\sum_{j=1}^{n}x_j, \qquad \sigma^2=\frac{1}{n}\sum_{j=1}^{n}(x_j-\mu)^2, \qquad \mathbf{z}=\boldsymbol{\gamma}\otimes\frac{\mathbf{x}-\mu}{\sqrt{\sigma^2+\varepsilon}}+\boldsymbol{\beta}\]
+Đây vẫn là quy trình bốn bước như batch normalization, nhưng thay vì tính thống kê trên mini-batch, layer normalization tính chúng dọc theo các đặc trưng của từng mẫu.
+
+Vì không có yếu tố nào phụ thuộc vào lô dữ liệu (batch), layer normalization thực hiện cùng một phép tính tại thời điểm huấn luyện và kiểm thử, và có thể hoạt động tốt ngay cả với kích thước lô bằng 1. Vì vậy, layer normalization có thể áp dụng cho mạng hồi quy (recurrent network) bằng cách chuẩn hóa riêng biệt tại mỗi bước thời gian, và cách làm này giúp ổn định động lực của trạng thái ẩn. Đây là lựa chọn tiêu chuẩn trong các kiến trúc Transformer~\cite{vaswani2017}.
 
 \subsection{Residual/skip connection và thiết kế kiến trúc}
 \textit{Phụ trách: Tâm}
@@ -1778,6 +1854,33 @@ V.~S. Borkar,
 A.~Ceni,
 \newblock ``Random orthogonal additive filters: a solution to the vanishing/exploding gradient of deep neural networks,''
 \newblock \emph{IEEE Transactions on Neural Networks and Learning Systems}, 2022.
+
+\bibitem{poole2016}
+Poole, B., Lahiri, S., Raghu, M., Sohl-Dickstein, J. and Ganguli, S. (2016)
+`Exponential expressivity in deep neural networks through transient chaos',
+in Lee, D., Sugiyama, M., Luxburg, U., Guyon, I. and Garnett, R. (eds.)
+\textit{Advances in Neural Information Processing Systems}, 29.
+
+\bibitem{yang2019}
+Yang, G., Pennington, J., Rao, V., Sohl-Dickstein, J. and Schoenholz, S.S.
+(2019) `A Mean Field Theory of Batch Normalization', \textit{Proceedings of
+the 7th International Conference on Learning Representations}. Available at:
+\url{https://openreview.net/forum?id=SyMDXnCcF7}
+(Accessed: 6 October 2026).
+
+\bibitem{ba2016layernorm}
+Ba, J.L., Kiros, J.R. and Hinton, G.E. (2016) `Layer Normalization',
+\textit{arXiv preprint} arXiv:1607.06450. Available at:
+\url{https://arxiv.org/abs/1607.06450}
+(Accessed: 6 October 2026).
+
+\bibitem{vaswani2017}
+Vaswani, A., Shazeer, N., Parmar, N., Uszkoreit, J., Jones, L., Gomez, A.N.,
+Kaiser, L. and Polosukhin, I. (2017) `Attention Is All You Need', in
+\textit{Advances in Neural Information Processing Systems}, 30,
+pp.~5998--6008. Available at:
+\url{https://arxiv.org/abs/1706.03762}
+(Accessed: 6 October 2026).
 
 \end{thebibliography}
 
